@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+/artifacts/
+.vs/
+*.user
+*.suo
+*.log
+*.pfx
+*.p12
+.DS_Store
+Thumbs.db
+Desktop.ini

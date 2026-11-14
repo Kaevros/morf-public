@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>WindowsWidgates</AssemblyName>
+    <AssemblyTitle>Morf</AssemblyTitle>
+    <Product>Morf</Product>
+    <Description>Morf</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/Brand/morf.ico</ApplicationIcon>
+    <Version>0.3.0-preview</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/Brand/*.png" LogicalName="Widgates.Brand.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
