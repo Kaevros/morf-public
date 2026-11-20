@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace Widgates
@@ -9,7 +10,11 @@ namespace Widgates
         internal static bool Open(string appId) { return WithItem(appId, item => {
             var info = new ShellExecuteInfo { Size = Marshal.SizeOf(typeof(ShellExecuteInfo)), Mask = 0x0000050C,
                 Verb = "open", IdList = item, Show = 1 };
-            return ShellExecuteEx(ref info);
+            bool opened = ShellExecuteEx(ref info);
+            int error = opened ? 0 : Marshal.GetLastWin32Error();
+            // Respect an explicit Windows denial/cancellation; callers must not retry another API.
+            if (error == 5 || error == 1223) throw new Win32Exception(error);
+            return opened;
         }); }
         internal static bool CanResolve(string appId) { return WithItem(appId, _ => true); }
         private static bool WithItem(string appId, Func<IntPtr, bool> action)

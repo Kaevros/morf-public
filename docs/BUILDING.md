@@ -55,7 +55,7 @@ Native integration modes are opt-in. They may open windows, access Windows integ
 
 The script builds both runtimes, runs standard checks, checks version alignment and verifies a four-file ZIP containing the EXE, instructions, license and SHA256. It looks for a local SDK at `artifacts/dotnet/dotnet.exe`, then falls back to `dotnet`; `-Dotnet` can select an SDK explicitly.
 
-Output: `artifacts/share/Morf-0.3.2-preview-Windows.zip` for the current version. Generated SDK output, logs, test fixtures and local archives stay under `artifacts/` and are excluded from Git.
+Output: `artifacts/share/Morf-0.3.3-preview-Windows.zip` for the current version. Generated SDK output, logs, test fixtures and local archives stay under `artifacts/` and are excluded from Git.
 
 For optional current-user installation:
 
@@ -81,7 +81,7 @@ The certificate must have an accessible private key and a publisher matching the
 After validating the signed package, installation is a separate owner-controlled action:
 
 ```powershell
-Add-AppxPackage -Path '.\artifacts\notifications-package\Morf-Notifications-0.3.2-preview-x64.msix'
+Add-AppxPackage -Path '.\artifacts\notifications-package\Morf-Notifications-0.3.3-preview-x64.msix'
 ```
 
 Close Morf normally before an update. Package identity, Windows notification permission and banner-routing recovery require their own validation. Keep signing keys and certificate exports outside the repository.

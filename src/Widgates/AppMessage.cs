@@ -10,6 +10,7 @@ namespace Widgates
     {
         internal const string WhatsAppId = "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App";
         internal const string WhatsAppBetaId = "5319275A.WhatsAppDesktopBeta_cv1g1gvanyjgm!App";
+        internal const string WhatsAppCurrentBetaId = "5319275A.51895FA4EA97F_cv1g1gvanyjgm!App";
         internal string Key, Sender, Body;
         internal string AppId, AppName;
         internal DateTimeOffset Created;
@@ -25,6 +26,7 @@ namespace Widgates
             if (string.IsNullOrEmpty(id)) return false;
             if (string.Equals(id, WhatsAppId, StringComparison.OrdinalIgnoreCase)) return true;
             if (string.Equals(id, WhatsAppBetaId, StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(id, WhatsAppCurrentBetaId, StringComparison.OrdinalIgnoreCase)) return true;
             if (string.Equals(id, "WhatsApp", StringComparison.OrdinalIgnoreCase) || string.Equals(id, "WhatsApp.Desktop", StringComparison.OrdinalIgnoreCase)) return true;
             return false;
         }

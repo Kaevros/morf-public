@@ -38,6 +38,8 @@ Notifications use a compact capsule while the hub is closed and a bounded inline
 
 `NotificationAppActivation` resolves validated identities inside Windows AppsFolder and invokes the registered open action on an explicit STA worker. This supports desktop AUMIDs as well as packaged apps without treating notification text as executable paths. A click opens the source application; the listener does not provide its original private toast-action payload for deep-linking to a conversation or document.
 
+`WhatsAppNotificationActivation` limits fallback to explicit WhatsApp application identities and keeps the stable and Beta channels separate. Missing registered-app opening can use Windows package activation for those fixed identities. Windows denial/cancellation exceptions stop the attempt. Notification titles and bodies never become phone numbers, protocol URLs or activation arguments; no WhatsApp contact database or account session is accessed.
+
 `NotificationBannerRouting` and `NotificationBannerRegistry` temporarily manage eligible current-user Windows banner preferences. A journal records restoration data. `NotificationBannerGuard` runs as a second process from the same EXE while needed; it waits for the parent and can restore preferences after an unexpected parent exit. This is not a universal pre-delivery interception API. Windows-version dependencies and recovery limits are documented in [privacy](PRIVACY.md).
 
 ## Settings and assets

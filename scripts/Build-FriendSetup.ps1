@@ -63,6 +63,7 @@ Morf açıksa kendi Çıkış menüsüyle kapatın; geçici raf bellekte tutulur
 Mevcut Morf ayarları güncellemede korunur. Morf'u Başlat menüsünden açın.
 
 Bildirimler için Morf > Ayarlar > Uygulamalar bölümünden Windows iznini verin.
+WhatsApp bildirimi uygulamayı açar; sohbeti WhatsApp içinden seçebilirsiniz.
 Morf standart kullanıcı olarak çalışır. Çoklu ses çıkışı deneyseldir.
 Windows 10 1809+ API tabanı ve .NET Framework 4.8 gerekir; tüm cihazlarda
 uyumluluk ve başka bilgisayarda kurulum henüz doğrulanmadı.

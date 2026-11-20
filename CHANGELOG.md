@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.3-preview — 2026-11-20
+
+- Make WhatsApp notification opening explicit and bounded: preserve the stable/Beta source, recognize the current Beta identity, and use exact package activation when registered-app opening is unavailable.
+- Respect Windows access denial or cancellation without trying another launch API.
+- Explain that a WhatsApp notification opens the application; selecting a specific chat remains inside WhatsApp. Notification text, names and phone-like strings are never converted into chat links or launch arguments.
+- Add unit coverage for target selection, failed opening and untrusted identifiers, plus a native check of Morf's notification-click handler and the real WhatsApp window.
+
+See [the WhatsApp assessment and validation](docs/WHATSAPP-033-VALIDATION.md). Direct conversation opening is not implemented because this integration does not expose a trusted conversation identifier or the original toast action.
+
 ## 0.3.2-preview — 2026-11-20
 
 - Keep the complete media player, including transport and volume controls, above the file shelf. Adding files extends the panel below the existing player.

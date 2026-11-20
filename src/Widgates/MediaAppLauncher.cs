@@ -15,27 +15,34 @@ namespace Widgates
     {
         private readonly Func<MediaApplication, bool> launch;
         private readonly Func<string, bool> notificationLaunch;
+        private readonly Func<string, bool> notificationPackageLaunch;
         private int busy;
-        internal MediaAppLauncher(Func<MediaApplication, bool> launch = null, Func<string, bool> notificationLaunch = null)
-        { this.launch = launch ?? LaunchKnownApplication; this.notificationLaunch = notificationLaunch ?? NotificationAppActivation.Open; }
+        internal MediaAppLauncher(Func<MediaApplication, bool> launch = null, Func<string, bool> notificationLaunch = null, Func<string, bool> notificationPackageLaunch = null)
+        {
+            this.launch = launch ?? LaunchKnownApplication; this.notificationLaunch = notificationLaunch ?? NotificationAppActivation.Open;
+            this.notificationPackageLaunch = notificationPackageLaunch ?? ActivateKnownApplication;
+        }
         internal async Task<string> OpenAsync(MediaApplication application)
         {
             if (!Enum.IsDefined(typeof(MediaApplication), application)) return "Bu uygulama desteklenmiyor.";
             return await OpenKnownAsync(() => launch(application), Name(application));
         }
-        internal Task<string> OpenWhatsAppAsync() { return OpenKnownAsync(() => ActivateKnownApplication(AppMessage.WhatsAppId), "WhatsApp"); }
+        internal Task<string> OpenWhatsAppAsync() { return OpenNotificationAppAsync(AppMessage.WhatsAppId, "WhatsApp"); }
         internal Task<string> OpenNotificationAppAsync(string appId, string name)
         {
             // Only a registered Windows identity from AppInfo; never toast text, arguments or paths.
             if (!ValidNotificationAppId(appId)) return Task.FromResult("Bu bildirimi Windows bildirim merkezinden açabilirsiniz.");
-            return OpenKnownAsync(() => notificationLaunch(appId), AppMessage.Clean(name, 80));
+            return OpenKnownAsync(() => AppMessage.IsWhatsApp(appId)
+                ? WhatsAppNotificationActivation.Open(appId, notificationLaunch, notificationPackageLaunch)
+                : notificationLaunch(appId), AppMessage.Clean(name, 80));
         }
         internal static bool ValidNotificationAppId(string appId)
         {
             if (string.IsNullOrEmpty(appId) || appId.Length > 256 || appId == "." || appId == ".."
                 || !appId.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-' || c == '!' || c == '{' || c == '}')) return false;
             int guidStart = appId.IndexOf('{'); Guid identifier;
-            return guidStart < 0 ? appId.IndexOf('}') < 0 : Guid.TryParse(appId.Substring(guidStart), out identifier);
+            return guidStart < 0 ? appId.IndexOf('}') < 0
+                : appId.IndexOf('}') == appId.Length - 1 && Guid.TryParse(appId.Substring(guidStart), out identifier);
         }
         private async Task<string> OpenKnownAsync(Func<bool> start, string name)
         {

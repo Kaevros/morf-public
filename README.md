@@ -16,7 +16,7 @@
 
 Morf keeps everyday media and file actions in a small panel at the edge of your screen. Open it with your pointer or **Ctrl + Alt + M**, control the current media session, adjust application audio, or carry files between windows.
 
-**Status:** `0.3.2-preview`. The first public binary release is being prepared. Signing, antivirus review and the remaining device checks are tracked in [release readiness](docs/RELEASING.md).
+**Status:** `0.3.3-preview`. The first public binary release is being prepared. Signing, antivirus review and the remaining device checks are tracked in [release readiness](docs/RELEASING.md).
 
 ## A look at Morf
 
@@ -44,7 +44,7 @@ Screenshots are rendered from the current Windows interface with demonstration m
 - **Media controls:** source selection, play/pause, previous/next, timeline seeking and supported shuffle/repeat controls. Playback stays in the original application.
 - **Application audio:** separate volume and mute controls for Windows audio sessions, with output selection and live change notifications. Per-application output routing opens Windows settings.
 - **Temporary file shelf:** drag local files and folders onto Morf, reorder or group them, then drag copies to another window or copy them for pasting. Originals stay where they are.
-- **Windows notifications:** optional previews with application preferences, content visibility, readable text and swipe dismissal. Live notifications require the MSIX build and Windows permission.
+- **Windows notifications:** optional previews with application preferences, content visibility, readable text, swipe dismissal and source-application opening. WhatsApp chats are selected inside WhatsApp. Live notifications require the MSIX build and Windows permission.
 - **Compact views:** capsule, thin line, automatic hiding and a floating island. An idle clock appears in supported visible modes.
 - **Appearance and behavior:** light/dark/system themes, surface transparency, pinning, monitor selection, application rules and reduced-motion support.
 - **Media handoff:** optional pausing of other sources and guarded return to music that Morf previously paused.

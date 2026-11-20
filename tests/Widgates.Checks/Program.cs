@@ -38,11 +38,12 @@ namespace Widgates
             bool nativeRefreshVolume = args.Length > 0 && args[0] == "--native-refresh-volume";
             bool nativeWindowsNotifications = args.Length > 0 && args[0] == "--native-windows-notifications";
             bool nativeNotificationOpen = args.Length > 0 && args[0] == "--native-notification-open";
+            bool nativeWhatsApp = args.Length > 0 && args[0] == "--native-whatsapp";
             bool nativeProductPack = args.Length > 0 && args[0] == "--native-product-pack";
             bool nativeMixerVisual = args.Length > 0 && args[0] == "--native-mixer-visual";
             bool liveSeek = args.Length > 0 && args[0] == "--live-spotify-seek";
             output = Path.GetFullPath(measure || measureArtwork || measurePlayer || measureExpandedSteady || nativeLayout || nativeMenu || nativeMedia || nativeLifecycle || nativeNotifications || nativeExpansion || nativeFloating || nativeDrawer || nativeClock || nativeDisplay || nativeRefreshVolume || nativeWindowsNotifications || nativeProductPack || nativeMixerVisual || liveSeek ? (args.Length > 1 ? args[1] : "artifacts/window-checks")
-                : nativeNotificationOpen ? (args.Length > 1 ? args[1] : "artifacts/notification-activation") : args.Length == 0 ? "artifacts/ux-checks" : args[0]);
+                : nativeNotificationOpen || nativeWhatsApp ? (args.Length > 1 ? args[1] : "artifacts/notification-activation") : args.Length == 0 ? "artifacts/ux-checks" : args[0]);
             Directory.CreateDirectory(output);
             int exitCode = 0;
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -50,7 +51,8 @@ namespace Widgates
             {
                 try
                 {
-                    if (nativeNotificationOpen) await WindowsNotificationChecks.RunActivationAsync(output);
+                    if (nativeWhatsApp) await WhatsAppNotificationChecks.RunNativeAsync(output);
+                    else if (nativeNotificationOpen) await WindowsNotificationChecks.RunActivationAsync(output);
                     else if (nativeMixerVisual) await ProductPackChecks.RunNativeAsync(output, true);
                     else if (nativeProductPack) await ProductPackChecks.RunNativeAsync(output);
                     else if (measureArtwork) await PerformanceOptimizationChecks.MeasureArtworkAsync(output);
@@ -238,6 +240,7 @@ namespace Widgates
                 await LifecycleChecks.RunAsync(output);
                 await AppNotificationChecks.RunAsync(output);
                 WindowsNotificationChecks.Run(output);
+                await WhatsAppNotificationChecks.RunAsync();
                 NotificationBannerChecks.Run();
                 ProductPackChecks.Run(output);
                 SetTheme(ThemePreference.System);

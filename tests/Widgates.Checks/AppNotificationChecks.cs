@@ -19,7 +19,8 @@ namespace Widgates
         private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
         internal static async Task RunAsync(string output)
         {
-            Check(AppMessage.IsWhatsApp(AppMessage.WhatsAppId) && AppMessage.IsWhatsApp(AppMessage.WhatsAppBetaId) && !AppMessage.IsWhatsApp("unknown!WhatsApp")
+            Check(AppMessage.IsWhatsApp(AppMessage.WhatsAppId) && AppMessage.IsWhatsApp(AppMessage.WhatsAppBetaId)
+                && AppMessage.IsWhatsApp(AppMessage.WhatsAppCurrentBetaId) && !AppMessage.IsWhatsApp("unknown!WhatsApp")
                 && !AppMessage.IsWhatsApp(AppMessage.WhatsAppId + ".fake") && !AppMessage.IsWhatsApp("5319275A.WhatsAppDesktopUnrelated!App")
                 && !AppMessage.IsWhatsApp("https://example.invalid/WhatsApp"), "Notification filtering accepts explicit WhatsApp identities and rejects prefix lookalikes");
             var moment = DateTimeOffset.UtcNow;

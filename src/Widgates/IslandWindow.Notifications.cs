@@ -140,7 +140,8 @@ namespace Widgates
             if (!string.IsNullOrEmpty(notificationActionNotice)) messageBody.Text = notificationActionNotice;
             messageBody.Visibility = string.IsNullOrWhiteSpace(messageBody.Text) ? Visibility.Collapsed : Visibility.Visible;
             AutomationProperties.SetName(messageOpen, messages.Current.Sample ? "Örnek bildirimi kapat" : appName + " · " + messageSender.Text);
-            AutomationProperties.SetHelpText(messageOpen, messageBody.Text);
+            AutomationProperties.SetHelpText(messageOpen, messageBody.Text + (AppMessage.IsWhatsApp(messages.Current.AppId)
+                ? "\nWhatsApp'ı açar; sohbet uygulama içinden seçilir." : ""));
             Task iconUpdate = UpdateNotificationIconAsync(messages.Current.AppId, mediaContent ? media.Thumbnail : null, showContent);
             messageOpen.IsHitTestVisible = true;
             messageView.Visibility = Visibility.Visible; messageView.IsHitTestVisible = true;

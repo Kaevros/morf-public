@@ -16,7 +16,7 @@
 
 Morf, günlük medya ve dosya işlemlerini ekran kenarındaki küçük bir panelde toplar. İşaretçinizle veya **Ctrl + Alt + M** ile açın; oynatmayı yönetin, uygulama seslerini ayarlayın veya dosyaları pencereler arasında taşıyacağınız rafa bırakın.
 
-**Durum:** `0.3.2-preview`. İlk genel ikili dağıtım hazırlanıyor. İmzalama, antivirüs incelemesi ve kalan cihaz denemeleri [yayın hazırlığında](docs/RELEASING.md) listelenir.
+**Durum:** `0.3.3-preview`. İlk genel ikili dağıtım hazırlanıyor. İmzalama, antivirüs incelemesi ve kalan cihaz denemeleri [yayın hazırlığında](docs/RELEASING.md) listelenir.
 
 ## Görünüm
 
@@ -44,7 +44,7 @@ Görüntüler mevcut Windows arayüzünden örnek medya ve ses oturumlarıyla ü
 - **Medya denetimleri:** kaynak seçimi, oynat/duraklat, önceki/sonraki, zaman çizelgesi ve kaynağın desteklediği karıştırma/tekrar seçenekleri. Oynatma kaynak uygulamada sürer.
 - **Uygulama sesleri:** Windows ses oturumları için ayrı ses düzeyi ve sessize alma, çıkış seçimi ve anlık değişiklik takibi. Uygulamaya özel çıkış atamak için Windows ayarları açılır.
 - **Geçici dosya rafı:** yerel dosya ve klasörleri bırakın, sıralayın veya gruplayın; ardından başka pencereye kopya olarak sürükleyin ya da yapıştırmak için kopyalayın. Asıllar yerinde kalır.
-- **Windows bildirimleri:** uygulama tercihleri, içerik gizleme, okunabilir metin ve kaydırarak kapatma. Canlı bildirimler MSIX sürümü ve Windows izni gerektirir.
+- **Windows bildirimleri:** uygulama tercihleri, içerik gizleme, okunabilir metin, kaydırarak kapatma ve kaynak uygulamayı açma. WhatsApp sohbeti uygulama içinden seçilir. Canlı bildirimler MSIX sürümü ve Windows izni gerektirir.
 - **Kapalı görünümler:** kapsül, ince çizgi, otomatik gizleme ve dinamik ada. Uygun görünür modlarda boşta saat gösterilir.
 - **Görünüm ve davranış:** açık/koyu/sistem teması, yüzey saydamlığı, sabitleme, ekran seçimi, uygulama kuralları ve azaltılmış hareket desteği.
 - **Medya geçişi:** diğer kaynakları isteğe bağlı duraklatma ve Morf'un daha önce duraklattığı müziğe kontrollü dönüş.

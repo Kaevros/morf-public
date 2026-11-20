@@ -1,6 +1,6 @@
 # Release readiness
 
-The current product version is **0.3.2-preview**. Local MSIX package revisions are installation counters, not separate public product releases. A locally trusted preview certificate is not a public distribution signing strategy.
+The current product version is **0.3.3-preview**. Local MSIX package revisions are installation counters, not separate public product releases. A locally trusted preview certificate is not a public distribution signing strategy.
 
 ## Before the first public binary
 
@@ -32,15 +32,15 @@ Repository preparation was checked on Windows build **26300.9974**:
 | Check | Result |
 | --- | --- |
 | .NET 10 Release build | Passed; 0 warnings, 0 errors |
-| .NET 10 standard checks | 384 passed |
-| Inbox build and standard checks | Passed; 384 checks |
+| .NET 10 standard checks | 395 passed |
+| Inbox build and standard checks | Passed; 395 checks |
 | Notification, expansion, floating, display, clock and lifecycle native modes | Passed separately on both runtimes; retry and full-sequence limitations in the linked report |
 | .NET WPF player/mixer visual checks | 13 passed; light/dark and narrow mixer layouts |
 | Portable archive | Four-file allowlist and embedded EXE SHA256 verified |
 
 README images were inspected from the actual WPF rendering with demonstration content. Local logs remain under `artifacts/`. Full live media, broad Windows/DPI coverage and physical multi-output audio remain open.
 
-The 0.3.2-preview shelf layout, notification activation, scrollbar and signed friend-setup results are recorded in [the current validation report](SHELF-NOTIFICATION-032-VALIDATION.md). The earlier 0.3.1 notification work remains documented in [notification refinement validation](NOTIFICATION-REFINEMENT-VALIDATION.md). These reports distinguish signed artifacts, installation and live UI evidence.
+The latest WhatsApp assessment and exact-package opening results are in [the 0.3.3 report](WHATSAPP-033-VALIDATION.md). The 0.3.2 shelf layout, notification activation, scrollbar and signed friend-setup results remain in [their validation report](SHELF-NOTIFICATION-032-VALIDATION.md). Earlier 0.3.1 notification work is in [notification refinement validation](NOTIFICATION-REFINEMENT-VALIDATION.md). These reports distinguish signed artifacts, installation and live UI evidence.
 
 The full native sequence has reproduced an Inbox settings-window shutdown problem. Run individual modes to distinguish this issue from an application regression. Some native audio modes access a loopback interface; the documentation-only visual mode does not.
 

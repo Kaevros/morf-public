@@ -71,6 +71,8 @@ namespace Widgates
             target.Children.Add(connections);
             var singleDisplay = Text("Windows başlıkları otomatik yönetilir; kapattığınızda önceki ayarlar geri gelir. Sistem uyarıları Windows'ta kalır.", 11);
             singleDisplay.Foreground = ThemePalette.Muted; singleDisplay.Margin = new Thickness(0, 0, 0, 10); target.Children.Add(singleDisplay);
+            var clickBehavior = Text("Bildirime tıklamak uygulamayı açar. WhatsApp sohbetini uygulama içinden seçebilirsiniz.", 11);
+            clickBehavior.Foreground = ThemePalette.Muted; clickBehavior.Margin = new Thickness(0, 0, 0, 10); target.Children.Add(clickBehavior);
             FlatChoice(target, "Gösterim süresi", new[] { "3 saniye", "5 saniye", "8 saniye" }, settings.NotificationSeconds == 3 ? 0 : settings.NotificationSeconds == 8 ? 2 : 1,
                 index => settings.NotificationSeconds = new[] { 3, 5, 8 }[index]);
             FlatChoice(target, "İçerik", new[] { "Başlık ve içerik", "Yalnızca uygulama" }, settings.NotificationContent ? 0 : 1,

@@ -1,6 +1,6 @@
 # Roadmap
 
-Morf is preparing its first public preview release. The current code version is `0.3.2-preview`.
+Morf is preparing its first public preview release. The current code version is `0.3.3-preview`.
 
 ## Implemented
 
