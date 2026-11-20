@@ -9,7 +9,7 @@
     <Description>Morf</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/Brand/morf.ico</ApplicationIcon>
-    <Version>0.3.0-preview</Version>
+    <Version>0.3.2-preview</Version>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets/Brand/*.png" LogicalName="Widgates.Brand.%(Filename)%(Extension)" />

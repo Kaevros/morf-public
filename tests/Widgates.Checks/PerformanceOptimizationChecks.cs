@@ -36,8 +36,9 @@ namespace Widgates
 
             var dispatcher = Dispatcher.CurrentDispatcher;
             var controller = new MediaController(dispatcher);
-            var publish = (Action<string, string, string>)Delegate.CreateDelegate(typeof(Action<string, string, string>), controller,
+            var publishMetadata = (Action<string, string, string, string>)Delegate.CreateDelegate(typeof(Action<string, string, string, string>), controller,
                 typeof(MediaController).GetMethod("PublishMetadataText", Private));
+            Action<string, string, string> publish = (title, artist, identity) => publishMetadata(title, artist, identity, "");
             int notifications = 0;
             controller.Changed += () => notifications++;
             publish("Track", "Artist", "identity A");
@@ -46,14 +47,18 @@ namespace Widgates
             Check(notifications == 1 && ReferenceEquals(controller.Thumbnail, image),
                 "Identical metadata preserves artwork without another full UI update");
             publish("Track", "Artist", "identity B");
-            Check(notifications == 2 && controller.TrackIdentity == "identity B",
-                "A new track identity is published even when its title and artist match");
+            Check(notifications == 2 && controller.TrackIdentity == "identity B" && controller.Thumbnail == null,
+                "A new track identity clears old artwork even when its title and artist match");
             publish("Next track", "Artist", "identity C");
             Check(notifications == 3 && controller.Title == "Next track" && controller.Thumbnail == null,
                 "The next track publishes text and clears old artwork before its cover arrives");
             typeof(MediaController).GetProperty("Notice", Private).SetValue(controller, "Temporary failure", null);
             publish("Next track", "Artist", "identity C");
             Check(notifications == 4 && controller.Notice == "", "An unchanged successful metadata read still clears a previous error");
+            typeof(MediaController).GetProperty("Thumbnail", Private).SetValue(controller, image, null);
+            publishMetadata("Next track", "Artist", "identity C", "New album");
+            Check(notifications == 5 && controller.Album == "New album" && controller.Thumbnail == null,
+                "An album-only update publishes the new detail and invalidates the previous cover");
             var queue = (Action)Delegate.CreateDelegate(typeof(Action), controller, typeof(MediaController).GetMethod("QueueRefresh", Private));
             int posted = 0;
             DispatcherHookEventHandler hook = (_, e) => { if (e.Operation.Priority == DispatcherPriority.Background) Interlocked.Increment(ref posted); };

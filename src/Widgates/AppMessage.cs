@@ -14,12 +14,12 @@ namespace Widgates
         internal string AppId, AppName;
         internal DateTimeOffset Created;
         internal bool Sample;
+        internal string MediaTrackIdentity;
         internal string DisplayTitle(bool content)
         {
-            string app = string.IsNullOrWhiteSpace(AppName) ? "Bildirim" : AppName;
-            return !content ? app : string.IsNullOrWhiteSpace(AppName) ? Sender : app + " · " + Sender;
+            return !content || string.IsNullOrWhiteSpace(Sender) ? "Yeni bildirim" : Sender;
         }
-        internal string DisplayBody(bool content) { return !content ? "Yeni bildirim" : string.IsNullOrEmpty(Body) ? (string.IsNullOrWhiteSpace(AppName) ? "Bildirim" : AppName) : Body; }
+        internal string DisplayBody(bool content) { return !content ? "İçerik gizli" : Body ?? ""; }
         internal static bool IsWhatsApp(string id)
         {
             if (string.IsNullOrEmpty(id)) return false;

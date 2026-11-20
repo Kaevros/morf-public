@@ -75,6 +75,17 @@ namespace Widgates
                 var recovering = new MediaAppLauncher(application => { if (++attempts == 1) throw new System.Runtime.InteropServices.COMException(); return true; });
                 string failed = await recovering.OpenAsync(MediaApplication.AppleMusic); string recovered = await recovering.OpenAsync(MediaApplication.AppleMusic);
                 Check(failed.Contains("açılamadı") && recovered.Contains("iletildi"), "A missing or denied application remains recoverable on the next explicit launch");
+                string notificationTarget = null; bool notificationSta = false;
+                var notificationLauncher = new MediaAppLauncher(notificationLaunch: id => { notificationTarget = id; notificationSta = Thread.CurrentThread.GetApartmentState() == ApartmentState.STA; return true; });
+                string desktopOpened = await notificationLauncher.OpenNotificationAppAsync("Spotify", "Spotify");
+                Check(notificationTarget == "Spotify" && notificationSta && desktopOpened.Contains("iletildi"),
+                    "Desktop notification identities reach registered application activation on an STA worker");
+                notificationTarget = null;
+                await notificationLauncher.OpenNotificationAppAsync("C:\\evil.exe", "Ignored title");
+                Check(notificationTarget == null, "Notification text and file paths cannot become launch targets");
+                var declined = new MediaAppLauncher(notificationLaunch: _ => false);
+                Check((await declined.OpenNotificationAppAsync("Missing.App", "Missing")).Contains("açılamadı"),
+                    "An unregistered notification app stays visible as a recoverable opening failure");
             }
             finally { gate.Dispose(); }
         }

@@ -14,8 +14,10 @@ namespace Widgates
     internal sealed class MediaAppLauncher
     {
         private readonly Func<MediaApplication, bool> launch;
+        private readonly Func<string, bool> notificationLaunch;
         private int busy;
-        internal MediaAppLauncher(Func<MediaApplication, bool> launch = null) { this.launch = launch ?? LaunchKnownApplication; }
+        internal MediaAppLauncher(Func<MediaApplication, bool> launch = null, Func<string, bool> notificationLaunch = null)
+        { this.launch = launch ?? LaunchKnownApplication; this.notificationLaunch = notificationLaunch ?? NotificationAppActivation.Open; }
         internal async Task<string> OpenAsync(MediaApplication application)
         {
             if (!Enum.IsDefined(typeof(MediaApplication), application)) return "Bu uygulama desteklenmiyor.";
@@ -26,12 +28,14 @@ namespace Widgates
         {
             // Only a registered Windows identity from AppInfo; never toast text, arguments or paths.
             if (!ValidNotificationAppId(appId)) return Task.FromResult("Bu bildirimi Windows bildirim merkezinden açabilirsiniz.");
-            return OpenKnownAsync(() => ActivateKnownApplication(appId), AppMessage.Clean(name, 80));
+            return OpenKnownAsync(() => notificationLaunch(appId), AppMessage.Clean(name, 80));
         }
         internal static bool ValidNotificationAppId(string appId)
         {
-            return !string.IsNullOrEmpty(appId) && appId.Length <= 256 && appId.Contains("!")
-                && appId.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-' || c == '!');
+            if (string.IsNullOrEmpty(appId) || appId.Length > 256 || appId == "." || appId == ".."
+                || !appId.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '_' || c == '-' || c == '!' || c == '{' || c == '}')) return false;
+            int guidStart = appId.IndexOf('{'); Guid identifier;
+            return guidStart < 0 ? appId.IndexOf('}') < 0 : Guid.TryParse(appId.Substring(guidStart), out identifier);
         }
         private async Task<string> OpenKnownAsync(Func<bool> start, string name)
         {
@@ -40,7 +44,7 @@ namespace Widgates
             try
             {
                 // Callers provide a fixed target or a validated registered Windows application identity.
-                pending = Task.Run(start);
+                pending = StartOnSta(start);
                 bool opened = await OperationDeadline.Run(pending, () => { }, 5000);
                 return opened ? "Açma isteği Windows'a iletildi." : name + " açılamadı. Uygulamanın yüklü ve kullanılabilir olduğunu kontrol edin.";
             }
@@ -56,6 +60,13 @@ namespace Widgates
                 if (pending == null || pending.IsCompleted) Interlocked.Exchange(ref busy, 0);
                 else { Task released = pending.ContinueWith(_ => Interlocked.Exchange(ref busy, 0)); }
             }
+        }
+        private static Task<bool> StartOnSta(Func<bool> start)
+        {
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var thread = new Thread(() => { try { completion.TrySetResult(start()); } catch (Exception error) { completion.TrySetException(error); } });
+            thread.IsBackground = true; thread.SetApartmentState(ApartmentState.STA); thread.Start();
+            return completion.Task;
         }
         internal static bool TryIdentify(string source, out MediaApplication application)
         {

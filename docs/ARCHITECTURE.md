@@ -34,6 +34,10 @@ Per-application output assignment is delegated to Windows settings. `AudioMirror
 
 `AppNotificationListener` uses Windows notification access when the app has package identity and permission. It coalesces events and bounds reads and pending content. `AppMessagePeek` owns presentation deadlines and the in-memory queue.
 
+Notifications use a compact capsule while the hub is closed and a bounded inline row while it is expanded. Matched music notifications are consumed when opening the player instead of replacing it. `MediaNotification` matches source identities and track text before using the current media artwork, artist and album; the bound track identity rejects later stale matches. Application names remain available for accessibility, filtering and activation without being repeated in visible headings. Private notification mode hides content artwork as well as text.
+
+`NotificationAppActivation` resolves validated identities inside Windows AppsFolder and invokes the registered open action on an explicit STA worker. This supports desktop AUMIDs as well as packaged apps without treating notification text as executable paths. A click opens the source application; the listener does not provide its original private toast-action payload for deep-linking to a conversation or document.
+
 `NotificationBannerRouting` and `NotificationBannerRegistry` temporarily manage eligible current-user Windows banner preferences. A journal records restoration data. `NotificationBannerGuard` runs as a second process from the same EXE while needed; it waits for the parent and can restore preferences after an unexpected parent exit. This is not a universal pre-delivery interception API. Windows-version dependencies and recovery limits are documented in [privacy](PRIVACY.md).
 
 ## Settings and assets

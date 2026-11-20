@@ -47,6 +47,15 @@ namespace Widgates
             resources["MenuAccent"] = ThemePalette.Accent;
             target.MergedDictionaries.Add(resources);
         }
+        internal static void ApplyScrollBars(ResourceDictionary target)
+        {
+            // Scope the themed vertical bar to the viewport without restyling its buttons.
+            var resources = new ResourceDictionary();
+            ApplyControls(resources);
+            target["MenuMuted"] = ThemePalette.Muted;
+            target["EmptyRepeat"] = resources["EmptyRepeat"];
+            target[typeof(System.Windows.Controls.Primitives.ScrollBar)] = resources[typeof(System.Windows.Controls.Primitives.ScrollBar)];
+        }
 
         internal static void ApplySlider(Slider slider)
         {

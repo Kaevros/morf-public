@@ -16,7 +16,7 @@
 
 Morf keeps everyday media and file actions in a small panel at the edge of your screen. Open it with your pointer or **Ctrl + Alt + M**, control the current media session, adjust application audio, or carry files between windows.
 
-**Status:** `0.3.0-preview`. The first public binary release is being prepared. Signing, antivirus review and the remaining device checks are tracked in [release readiness](docs/RELEASING.md).
+**Status:** `0.3.2-preview`. The first public binary release is being prepared. Signing, antivirus review and the remaining device checks are tracked in [release readiness](docs/RELEASING.md).
 
 ## A look at Morf
 

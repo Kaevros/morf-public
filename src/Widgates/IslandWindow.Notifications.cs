@@ -25,6 +25,9 @@ namespace Widgates
         private Image messageAppIcon;
         private FrameworkElement messageIconFallback;
         private string renderedIconApp;
+        private int notificationIconRevision;
+        private bool notificationInline;
+        private string lastMediaPreviewIdentity;
         private string notificationActionNotice;
         private int notificationSizeRevision, notificationInsetRevision;
         private string renderedMessage;
@@ -62,10 +65,10 @@ namespace Widgates
             messageView = new Grid { Visibility = Visibility.Collapsed, Opacity = 0, RenderTransformOrigin = new Point(0.5, 0.5) };
             var content = new Grid(); content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); content.ColumnDefinitions.Add(new ColumnDefinition());
             content.RenderTransform = notificationTranslation;
-            var icon = new Grid { Width = 28, Height = 28, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
+            var icon = new Grid { Width = 40, Height = 40, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
             messageIconFallback = SourceIcon(null, "M 4 11 L 4 6 A 4 4 0 0 1 12 6 L 12 11 L 14 13 L 2 13 Z M 6 15 L 10 15", 24);
-            messageAppIcon = new Image { Width = 24, Height = 24, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed };
-            RenderOptions.SetBitmapScalingMode(messageAppIcon, BitmapScalingMode.HighQuality); RoundImage(messageAppIcon, 6);
+            messageAppIcon = new Image { Width = 40, Height = 40, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed };
+            RenderOptions.SetBitmapScalingMode(messageAppIcon, BitmapScalingMode.HighQuality); RoundImage(messageAppIcon, 8);
             icon.Children.Add(messageIconFallback); icon.Children.Add(messageAppIcon); content.Children.Add(icon);
             var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             messageSender = Label("", 13, ThemePalette.Text, true); messageSender.TextWrapping = TextWrapping.Wrap; messageSender.TextTrimming = TextTrimming.None;
@@ -78,7 +81,7 @@ namespace Widgates
             Grid.SetColumn(messageScroll, 1); content.Children.Add(messageScroll);
             // A single interactive surface: no nested button background, hover card or tooltip.
             messageOpen = new Button { Content = content, Background = Brushes.Transparent, BorderThickness = new Thickness(0),
-                Padding = new Thickness(12, 10, 12, 10), Cursor = System.Windows.Input.Cursors.Hand,
+                Padding = new Thickness(16, 12, 16, 12), Cursor = System.Windows.Input.Cursors.Hand,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Center, FocusVisualStyle = null };
             var buttonTemplate = new ControlTemplate(typeof(Button));
             var hitArea = new FrameworkElementFactory(typeof(Grid)); hitArea.SetValue(Panel.BackgroundProperty, Brushes.Transparent);
@@ -107,11 +110,11 @@ namespace Widgates
                 else { notificationTranslation.X = 0; if (messages.Active && !shell.IsMouseOver) messages.Release(); }
             };
             messageOpen.LostMouseCapture += (_, __) => { if (notificationDragging) { notificationDragging = false; notificationDragStart = null; notificationTranslation.X = 0; if (messages.Active && !shell.IsMouseOver) messages.Release(); } };
-            messageOpen.GotKeyboardFocus += (_, __) => { if (messages.Active) { shell.BorderBrush = Accent; shell.BorderThickness = new Thickness(1); } };
-            messageOpen.LostKeyboardFocus += (_, __) => { if (messages.Active) { shell.BorderBrush = material.Edge; shell.BorderThickness = new Thickness(SystemParameters.HighContrast ? 1 : 0); } };
+            messageOpen.GotKeyboardFocus += (_, __) => { if (messages.Active && !expanded) { shell.BorderBrush = Accent; shell.BorderThickness = new Thickness(1); } };
+            messageOpen.LostKeyboardFocus += (_, __) => { if (messages.Active && !expanded) { shell.BorderBrush = material.Edge; shell.BorderThickness = new Thickness(SystemParameters.HighContrast ? 1 : 0); } };
             messageView.Children.Add(messageOpen);
         }
-        private void RenderNotification(bool animate)
+        private bool RenderNotificationContent()
         {
             hidingMessage = false;
             bool fresh = renderedMessage != messages.Current.Key;
@@ -122,29 +125,67 @@ namespace Widgates
             bool showContent = settings.NotificationContent && SourceRules.Parse(settings.NotificationRules).Get(messages.Current.AppId) != 1;
             messageSender.Text = messages.Current.DisplayTitle(showContent);
             messageBody.Text = messages.Current.DisplayBody(showContent);
+            bool matchedMedia = MatchesCurrentMedia(messages.Current);
+            if (matchedMedia)
+            {
+                messages.Current.MediaTrackIdentity = media.TrackIdentity;
+                lastMediaPreviewIdentity = media.TrackIdentity;
+            }
+            bool mediaContent = showContent && matchedMedia;
+            if (mediaContent)
+            {
+                messageSender.Text = media.Title;
+                messageBody.Text = MediaNotification.Detail(media.Artist, media.Album);
+            }
             if (!string.IsNullOrEmpty(notificationActionNotice)) messageBody.Text = notificationActionNotice;
+            messageBody.Visibility = string.IsNullOrWhiteSpace(messageBody.Text) ? Visibility.Collapsed : Visibility.Visible;
             AutomationProperties.SetName(messageOpen, messages.Current.Sample ? "Örnek bildirimi kapat" : appName + " · " + messageSender.Text);
             AutomationProperties.SetHelpText(messageOpen, messageBody.Text);
-            Task iconUpdate = UpdateNotificationIconAsync(messages.Current.AppId);
+            Task iconUpdate = UpdateNotificationIconAsync(messages.Current.AppId, mediaContent ? media.Thumbnail : null, showContent);
+            messageOpen.IsHitTestVisible = true;
+            messageView.Visibility = Visibility.Visible; messageView.IsHitTestVisible = true;
+            return fresh;
+        }
+        private double RenderInlineNotification()
+        {
+            if (!notificationInline) { notificationSizeRevision++; notificationInline = true; }
+            RenderNotificationContent();
+            expandedLayout.IsHitTestVisible = true;
+            SetNotificationInset(dockEdge == DockEdge.Top ? new Thickness(0, NormalIslandGap, 0, 0) : new Thickness(0, 0, 0, NormalIslandGap), false);
+            Grid.SetRow(messageView, 1); Grid.SetRowSpan(messageView, 1);
+            messageView.Margin = new Thickness(8, 0, 8, 8);
+            messageView.BeginAnimation(UIElement.OpacityProperty, null); messageView.Opacity = 1;
+            messageView.RenderTransform = Transform.Identity;
+            double availableHeight = placement == null ? SystemParameters.WorkArea.Height : placement.AvailableSize.Height;
+            messageScroll.MaxHeight = Math.Max(1, Math.Min(96, availableHeight / 4) - 24);
+            double width = PanelSizing.Fit(new Size(380, 1), placement == null ? new Size(SystemParameters.WorkArea.Width, availableHeight) : placement.AvailableSize).Width;
+            messageView.Measure(new Size(Math.Max(1, width - 2), double.PositiveInfinity));
+            return messageView.DesiredSize.Height;
+        }
+        private void RenderNotification(bool animate)
+        {
+            notificationInline = false;
+            bool fresh = RenderNotificationContent();
+            Grid.SetRow(messageView, 0); Grid.SetRowSpan(messageView, 2);
+            messageView.Margin = new Thickness(0);
             bool motion = animate && SystemParameters.ClientAreaAnimation && !LightMode && (power == null || power.State.RenderAllowed);
             Size available = placement == null ? new Size(SystemParameters.WorkArea.Width, SystemParameters.WorkArea.Height) : placement.AvailableSize;
             messageSender.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             messageBody.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             double contentWidth = Math.Max(messageSender.DesiredSize.Width, messageBody.DesiredSize.Width);
-            double width = Math.Min(Math.Min(available.Width, HostWidth), Math.Max(128, Math.Min(360, Math.Ceiling(contentWidth + 64))));
-            double gap = Math.Min(8, Math.Max(0, available.Height - 56));
+            double width = Math.Min(Math.Min(available.Width, HostWidth), Math.Max(180, Math.Min(380, Math.Ceiling(contentWidth + 84))));
+            double gap = Math.Min(8, Math.Max(0, available.Height - 64));
             double maxHeight = Math.Max(1, Math.Min(320, available.Height - gap));
-            messageScroll.MaxHeight = Math.Max(1, maxHeight - 20);
-            messageSender.Measure(new Size(Math.Max(1, width - 64), double.PositiveInfinity));
-            messageBody.Measure(new Size(Math.Max(1, width - 64), double.PositiveInfinity));
-            double height = Math.Min(maxHeight, Math.Max(56, Math.Ceiling(messageSender.DesiredSize.Height + messageBody.DesiredSize.Height + 22)));
+            messageScroll.MaxHeight = Math.Max(1, maxHeight - 24);
+            messageScroll.Measure(new Size(Math.Max(1, width - 84), double.PositiveInfinity));
+            double height = Math.Min(maxHeight, Math.Max(64, Math.Ceiling(messageScroll.DesiredSize.Height + 24)));
             SetNotificationInset(dockEdge == DockEdge.Top ? new Thickness(0, gap, 0, 0) : new Thickness(0, 0, 0, gap), motion);
             shell.Background = material.Background; shell.BorderBrush = material.Edge; shell.Opacity = 1;
-            shell.CornerRadius = new CornerRadius(Math.Min(28, height / 2)); sheen.CornerRadius = shell.CornerRadius;
+            shell.CornerRadius = new CornerRadius(height <= 76 ? height / 2 : 24); sheen.CornerRadius = shell.CornerRadius;
             shell.BorderThickness = new Thickness(SystemParameters.HighContrast || messageOpen.IsKeyboardFocusWithin ? 1 : 0);
             if (messageOpen.IsKeyboardFocusWithin) shell.BorderBrush = Accent;
             sheen.Background = Brushes.Transparent; sheen.Visibility = Visibility.Collapsed;
-            shell.ToolTip = null; AutomationProperties.SetName(shell, appName + " bildirimi");
+            shell.ToolTip = null; AutomationProperties.SetName(shell, (messages.Current.AppName ?? "Uygulama") + " bildirimi");
             compact.BeginAnimation(UIElement.OpacityProperty, null); panel.BeginAnimation(UIElement.OpacityProperty, null);
             compact.Opacity = panel.Opacity = 0; compact.IsHitTestVisible = expandedLayout.IsHitTestVisible = false;
             compact.Visibility = panel.Visibility = Visibility.Collapsed;
@@ -200,7 +241,7 @@ namespace Widgates
             compact.IsHitTestVisible = expandedLayout.IsHitTestVisible = true;
             if (messageView.Visibility != Visibility.Visible) return;
             messageView.IsHitTestVisible = false;
-            if (animate && SystemParameters.ClientAreaAnimation && !LightMode)
+            if (animate && !notificationInline && !expanded && SystemParameters.ClientAreaAnimation && !LightMode)
             {
                 if (hidingMessage) return;
                 hidingMessage = true;
@@ -209,11 +250,13 @@ namespace Widgates
                 messageView.BeginAnimation(UIElement.OpacityProperty, fade);
             }
             else { hidingMessage = false; messageView.BeginAnimation(UIElement.OpacityProperty, null); messageView.Opacity = 0; messageView.Visibility = Visibility.Collapsed; ClearNotificationContent(); }
+            notificationInline = false;
         }
         private void ClearNotificationContent()
         {
             notificationDragStart = null; notificationDragging = false; notificationTranslation.BeginAnimation(TranslateTransform.XProperty, null); notificationTranslation.X = 0;
             renderedMessage = renderedIconApp = notificationActionNotice = null;
+            notificationIconRevision++;
             messageSender.Text = messageBody.Text = "";
             AutomationProperties.SetHelpText(messageOpen, "");
             messageAppIcon.Source = null; messageAppIcon.Visibility = Visibility.Collapsed; messageIconFallback.Visibility = Visibility.Visible;
@@ -275,15 +318,24 @@ namespace Widgates
             }
             finally { openingMessage = false; if (!closed && messages.Active && !shell.IsMouseOver) messages.Release(); }
         }
-        private async Task UpdateNotificationIconAsync(string appId)
+        private async Task UpdateNotificationIconAsync(string appId, ImageSource cover, bool showContent)
         {
             appId = appId ?? "";
+            if (!showContent || cover != null)
+            {
+                notificationIconRevision++; renderedIconApp = null;
+                messageAppIcon.Source = cover;
+                messageAppIcon.Visibility = cover == null ? Visibility.Collapsed : Visibility.Visible;
+                messageIconFallback.Visibility = cover == null ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
             if (renderedIconApp == appId) return;
+            int revision = ++notificationIconRevision;
             renderedIconApp = appId; messageAppIcon.Source = null; messageAppIcon.Visibility = Visibility.Collapsed; messageIconFallback.Visibility = Visibility.Visible;
             try
             {
                 var bitmap = await MediaAppIcon.GetAsync(appId);
-                if (closed || renderedIconApp != appId || !messages.Active || (messages.Current.AppId ?? "") != appId || bitmap == null) return;
+                if (closed || revision != notificationIconRevision || renderedIconApp != appId || !messages.Active || (messages.Current.AppId ?? "") != appId || bitmap == null) return;
                 messageAppIcon.Source = bitmap; messageAppIcon.Visibility = Visibility.Visible; messageIconFallback.Visibility = Visibility.Collapsed;
             }
             catch { /* An unavailable app icon retains the static bell. */ }
@@ -306,6 +358,11 @@ namespace Widgates
             if (!settings.WindowsNotifications || message == null || !MessageContextAllowed) return;
             if (SourceRules.Parse(settings.NotificationRules).Get(message.AppId) == 2) return;
             if (bannerRouting != null && !bannerRouting.CanPresent(message.AppId)) return;
+            if (MatchesCurrentMedia(message))
+            {
+                if (expanded || lastMediaPreviewIdentity == media.TrackIdentity) return;
+                message.MediaTrackIdentity = media.TrackIdentity;
+            }
             if (MessageAllowed) messages.Offer(message, true);
             else if (SettingsOpen && DateTimeOffset.UtcNow - message.Created <= TimeSpan.FromSeconds(10)) pendingNotification = message;
         }
@@ -313,7 +370,17 @@ namespace Widgates
         {
             var pending = pendingNotification; pendingNotification = null;
             if (settings.WindowsNotifications && MessageAllowed && pending != null && SourceRules.Parse(settings.NotificationRules).Get(pending.AppId) != 2
-                && (bannerRouting == null || bannerRouting.CanPresent(pending.AppId))) messages.Offer(pending, true);
+                && (bannerRouting == null || bannerRouting.CanPresent(pending.AppId))
+                && !(MatchesCurrentMedia(pending) && (expanded || lastMediaPreviewIdentity == media.TrackIdentity))) messages.Offer(pending, true);
+        }
+        private bool MatchesCurrentMedia(AppMessage message)
+        {
+            return MediaNotification.Matches(message, media.SourceId,
+                media.Title, media.Artist, media.Album, media.TrackIdentity);
+        }
+        private bool IsMediaNotification(AppMessage message)
+        {
+            return message != null && (message.MediaTrackIdentity != null || MatchesCurrentMedia(message));
         }
         private void UpdateNotificationRouting()
         {

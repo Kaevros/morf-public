@@ -53,6 +53,7 @@ namespace Widgates
         internal event Action TimelineChanged;
         internal IReadOnlyList<Session> Sessions { get; private set; }
         internal Session Active { get { return active; } }
+        internal string SourceId { get; private set; }
         internal bool HasPreference { get { return preferred != null; } }
         private SourceRules sourceRules = new SourceRules();
         private string sourceRuleText = "";
@@ -65,6 +66,7 @@ namespace Widgates
         private int SourceRule(Session session) { return session == null ? 0 : sourceRules.Get(session.SourceAppUserModelId); }
         internal string Title { get; private set; }
         internal string Artist { get; private set; }
+        internal string Album { get; private set; }
         internal string TrackIdentity { get; private set; }
         internal long PlaybackRevision { get; private set; }
         internal ImageSource Thumbnail { get; private set; }
@@ -109,6 +111,7 @@ namespace Widgates
             Sessions = new Session[0];
             Title = "";
             Artist = "";
+            Album = "";
             Notice = "Windows medyasına bağlanılıyor…";
             refresh = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(80) };
             refresh.Tick += RefreshTick;
@@ -390,8 +393,10 @@ namespace Widgates
                 {
                     Detach();
                     active = current;
+                    SourceId = current == null ? "" : current.SourceAppUserModelId;
                     Title = "";
                     Artist = "";
+                    Album = "";
                     TrackIdentity = "";
                     Thumbnail = null;
                     Notice = "";
@@ -430,7 +435,7 @@ namespace Widgates
             string artist = properties == null ? "" : properties.Artist ?? "";
             string identity = TrackKey(source, properties);
             knownTracks[source] = identity;
-            PublishMetadataText(title, artist, identity);
+            PublishMetadataText(title, artist, identity, properties == null ? "" : properties.AlbumTitle ?? "");
             ImageSource thumb = null;
             if (properties != null && properties.Thumbnail != null)
             {
@@ -457,11 +462,11 @@ namespace Widgates
             if (!ReferenceEquals(Thumbnail, thumb)) { Thumbnail = thumb; Notify(); }
         }
 
-        private void PublishMetadataText(string title, string artist, string identity)
+        private void PublishMetadataText(string title, string artist, string identity, string album = "")
         {
-            bool changed = Title != title || Artist != artist || TrackIdentity != identity || !string.IsNullOrEmpty(notice);
-            if (Title != title || Artist != artist) Thumbnail = null;
-            Title = title; Artist = artist; TrackIdentity = identity;
+            bool changed = Title != title || Artist != artist || Album != album || TrackIdentity != identity || !string.IsNullOrEmpty(notice);
+            if (TrackIdentity != identity || Title != title || Artist != artist || Album != album) Thumbnail = null;
+            Title = title; Artist = artist; Album = album; TrackIdentity = identity;
             Notice = "";
             // Text must not wait for artwork. Unchanged metadata must not rebuild the UI.
             if (changed) Notify();

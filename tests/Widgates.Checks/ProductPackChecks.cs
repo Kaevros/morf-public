@@ -60,7 +60,7 @@ namespace Widgates
                 peek.Filter(x => x.AppId != "Other"); Check(peek.Queued == 0 && peek.Current.AppId == "Chat", "Changing notification selection removes queued excluded apps without dismissing allowed content");
             }
             var message = new AppMessage { AppName = "Chat", Sender = "Private sender", Body = "Private body" };
-            Check(message.DisplayTitle(false) == "Chat" && message.DisplayBody(false) == "Yeni bildirim"
+            Check(message.DisplayTitle(false) == "Yeni bildirim" && message.DisplayBody(false) == "İçerik gizli"
                 && message.DisplayTitle(true).Contains("Private sender"), "Notification privacy hides both sender title and message content");
         }
         internal static async Task RunNativeAsync(string output, bool visualOnly = false)

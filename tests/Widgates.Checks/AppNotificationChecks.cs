@@ -159,20 +159,23 @@ namespace Widgates
                     + "; display=" + notificationPower.State.DisplayOn + "; locked=" + notificationPower.State.Locked
                     + "; game=" + Field<DesktopPlacement>(widget, "placement").GameActive);
                 Call(widget, "PreviewNotification"); await Task.Delay(320);
-                Check(messages.Active && shell.ActualHeight <= 76.5 && state.Expanded && state.Persistent,
-                    "A transient message replaces the media view while preserving the expanded pinned state (active=" + messages.Active
+                Check(messages.Active && shell.ActualHeight >= previousHeight && Field<StackPanel>(widget, "panel").Visibility == Visibility.Visible
+                    && Equals(Field<Grid>(widget, "expandedLayout").ReadLocalValue(UIElement.IsHitTestVisibleProperty), true) && state.Expanded && state.Persistent,
+                    "A transient message stays inside the expanded pinned hub with the player visible and interactive (active=" + messages.Active
                     + ", height=" + shell.ActualHeight + ", expanded=" + state.Expanded + ", persistent=" + state.Persistent + ")");
                 var messageView = Field<Grid>(widget, "messageView"); var messageButton = Field<Button>(widget, "messageOpen");
                 Check(messageView.Children.Count == 1 && messageView.Children[0] == messageButton && messageButton.ToolTip == null
                     && !ToolTipService.GetIsEnabled(messageButton) && !VisualChildren(messageButton).OfType<Border>().Any(),
                     "Notification uses one transparent hit target without a nested card, close button or tooltip");
                 Point topLeft = shell.TranslatePoint(new Point(), widget);
-                Check(Math.Abs(topLeft.Y - 8) < 0.7 && shell.ActualWidth <= 320.5 && shell.ActualHeight <= 56.5
+                Check(Math.Abs(topLeft.Y) < 0.7 && Math.Abs(shell.ActualWidth - 380) < 0.7
                     && Math.Abs(topLeft.X + shell.ActualWidth / 2 - widget.ActualWidth / 2) < 0.7
-                    && shell.CornerRadius.TopLeft == shell.CornerRadius.BottomLeft && shell.CornerRadius.TopLeft >= 27,
-                    "The notification has a compact eight-DIP edge gap and fully rounded centered capsule");
-                Check(!Field<DispatcherTimer>(widget, "progress").IsEnabled && !Field<MarqueeText>(widget, "compactMarquee").Running,
-                    "The hidden media view stops its progress and marquee clocks during a message");
+                    && Grid.GetRow(messageView) == 1 && Grid.GetRowSpan(messageView) == 1,
+                    "An inline notification uses the expanded hub width and its own row without a floating capsule inset");
+                var connectedMedia = Field<MediaController>(widget, "media");
+                bool expectedProgress = connectedMedia.IsPlaying && settings.ShowTimeline && connectedMedia.Timeline != null && connectedMedia.Timeline.Valid;
+                Check(Field<DispatcherTimer>(widget, "progress").IsEnabled == expectedProgress && !Field<MarqueeText>(widget, "compactMarquee").Running,
+                    "An inline message keeps the visible player's progress clock while the compact marquee stays stopped");
                 messages.Hold();
                 messages.Current.Body = string.Join(" ", Enumerable.Repeat("Uzun mesaj önizlemesi", 20));
                 Call(widget, "UpdateState", false); widget.UpdateLayout();
@@ -180,8 +183,8 @@ namespace Widgates
                 var sender = Field<TextBlock>(widget, "messageSender");
                 Point bodyTop = body.TranslatePoint(new Point(), shell);
                 Check(body.TextWrapping == TextWrapping.Wrap && body.TextTrimming == TextTrimming.None
-                    && bodyTop.Y >= sender.TranslatePoint(new Point(0, sender.ActualHeight), shell).Y && shell.ActualHeight <= 320.5,
-                    "A long notification wraps within the bounded, scrollable capsule");
+                    && bodyTop.Y >= sender.TranslatePoint(new Point(0, sender.ActualHeight), shell).Y && Field<ScrollViewer>(widget, "messageScroll").ActualHeight <= 72.5,
+                    "A long inline notification wraps in a bounded scroll area without replacing the player");
                 Capture(shell, Path.Combine(output, "notification-top.png"));
                 Capture(widget, Path.Combine(output, "notification-floating-top.png"));
                 var originalTheme = ThemePalette.Preference;
@@ -210,12 +213,12 @@ namespace Widgates
                 Check(shell.Margin == new Thickness(0), "Returning to the player removes only the temporary notification inset");
                 settings.Dock = DockPreference.Bottom; settings.NotificationContent = false; Call(widget, "ApplySettings", false);
                 Call(widget, "PreviewNotification"); await Task.Delay(300);
-                Check(Field<TextBlock>(widget, "messageSender").Text == messages.Current.AppName && Field<TextBlock>(widget, "messageBody").Text == "Yeni bildirim" && shell.BorderThickness.Bottom == 0,
+                Check(Field<TextBlock>(widget, "messageSender").Text == "Yeni bildirim" && Field<TextBlock>(widget, "messageBody").Text == "İçerik gizli"
+                    && Field<Image>(widget, "messageAppIcon").Source == null,
                     "Private notification mode hides sender and body without adding a notification outline");
                 Point bottomLeft = shell.TranslatePoint(new Point(), widget);
-                Check(Math.Abs(widget.ActualHeight - bottomLeft.Y - shell.ActualHeight - 8) < 0.7
-                    && shell.CornerRadius.TopLeft == shell.CornerRadius.BottomLeft,
-                    "Lower-edge notification uses the same floating gap and fully rounded shape");
+                Check(Math.Abs(widget.ActualHeight - bottomLeft.Y - shell.ActualHeight) < 0.7 && shell.Margin == new Thickness(0),
+                    "Lower-edge inline notifications retain the expanded hub docking and inset");
                 Capture(shell, Path.Combine(output, "notification-bottom-private.png"));
                 Capture(widget, Path.Combine(output, "notification-floating-bottom.png"));
                 messages.Hold(); Check(!messages.ClockRunning, "Native reading hover stops the notification clock");
@@ -233,11 +236,11 @@ namespace Widgates
                 settings.HideInGames = false;
                 typeof(DesktopPlacement).GetField("gameActive", Private).SetValue(placement, false); Call(widget, "UpdateVisibility");
                 Call(widget, "ClosePanel"); await Task.Delay(280);
-                double compactWidth = shell.ActualWidth;
                 Call(widget, "PreviewNotification"); await Task.Delay(100);
                 Point expanding = shell.TranslatePoint(new Point(shell.ActualWidth / 2, 0), widget);
-                Check(Math.Abs(expanding.X - widget.ActualWidth / 2) < 0.7 && Math.Abs(shell.ActualWidth - compactWidth) > 0.7,
-                    "The content-sized notification resizes around the compact island's horizontal center");
+                Check(Math.Abs(expanding.X - widget.ActualWidth / 2) < 0.7 && shell.ActualWidth >= 179.5 && shell.ActualWidth <= 380.5
+                    && Field<Grid>(widget, "messageView").Visibility == Visibility.Visible,
+                    "The content-sized notification stays centered with a bounded width even when it equals the compact width");
                 Capture(widget, Path.Combine(output, "notification-expansion.png"));
                 messages.Cancel(); await Task.Delay(280);
                 Call(widget, "OpenSettings"); await Task.Delay(100);

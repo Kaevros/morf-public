@@ -1,6 +1,6 @@
 # Roadmap
 
-Morf is preparing its first public preview release. The current code version is `0.3.0-preview`.
+Morf is preparing its first public preview release. The current code version is `0.3.2-preview`.
 
 ## Implemented
 
@@ -10,6 +10,7 @@ Morf is preparing its first public preview release. The current code version is 
 - Light/dark/system themes, surface transparency and reduced-motion behavior.
 - Per-application audio mixer and experimental multi-output playback.
 - Opt-in Windows notification previews in the identity-bearing MSIX build.
+- Notifications inside the expanded hub, content-first headings and matched media artwork/album details.
 - Per-user preferences, optional startup, tray actions and configurable shortcuts.
 
 ## Release priorities

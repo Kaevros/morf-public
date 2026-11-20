@@ -55,7 +55,7 @@ Native integration modes are opt-in. They may open windows, access Windows integ
 
 The script builds both runtimes, runs standard checks, checks version alignment and verifies a four-file ZIP containing the EXE, instructions, license and SHA256. It looks for a local SDK at `artifacts/dotnet/dotnet.exe`, then falls back to `dotnet`; `-Dotnet` can select an SDK explicitly.
 
-Output: `artifacts/share/Morf-0.3.0-preview-Windows.zip` for the current version. Generated SDK output, logs, test fixtures and local archives stay under `artifacts/` and are excluded from Git.
+Output: `artifacts/share/Morf-0.3.2-preview-Windows.zip` for the current version. Generated SDK output, logs, test fixtures and local archives stay under `artifacts/` and are excluded from Git.
 
 For optional current-user installation:
 
@@ -81,7 +81,19 @@ The certificate must have an accessible private key and a publisher matching the
 After validating the signed package, installation is a separate owner-controlled action:
 
 ```powershell
-Add-AppxPackage -Path '.\artifacts\notifications-package\Morf-Notifications-0.3.0-preview-x64.msix'
+Add-AppxPackage -Path '.\artifacts\notifications-package\Morf-Notifications-0.3.2-preview-x64.msix'
 ```
 
 Close Morf normally before an update. Package identity, Windows notification permission and banner-routing recovery require their own validation. Keep signing keys and certificate exports outside the repository.
+
+## Friend-test setup ZIP
+
+Use an existing owner-selected signing certificate and a fresh output directory:
+
+```powershell
+.\scripts\Build-FriendSetup.ps1 -CertificateThumbprint '<existing signing certificate>' -OutputDirectory 'artifacts/friend-setup-new'
+```
+
+The archive contains `Kurulum.exe`, the signed notification-capable MSIX, public-only `Morf.cer`, `KURULUM.txt` and `SHA256.txt`. The builder signs and verifies the setup executable and MSIX package, verifies the setup's embedded payload hashes and every ZIP entry, and never installs the app or changes certificate trust. The setup runs as the user and opens the Windows certificate and MSIX installers only when their buttons are clicked; first-device certificate trust and notification permission remain explicit user actions. It does not include the private signing key.
+
+`Kurulum.exe --verify` checks payload integrity without opening installers. `--render` writes a setup preview PNG without changing trust or installing the app. These modes support local packaging validation; they do not replace a clean-device installation test.

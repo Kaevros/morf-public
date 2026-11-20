@@ -42,7 +42,8 @@ namespace Widgates
         }
         private static bool SameConversation(AppMessage first, AppMessage second)
         {
-            return string.Equals(first.AppId, second.AppId, StringComparison.OrdinalIgnoreCase) && first.Sender == second.Sender;
+            return string.Equals(first.AppId, second.AppId, StringComparison.OrdinalIgnoreCase)
+                && (first.Sender == second.Sender || (first.MediaTrackIdentity != null && second.MediaTrackIdentity != null));
         }
         private void Show(AppMessage message)
         {
@@ -76,10 +77,19 @@ namespace Widgates
             queue.RemoveAll(x => !x.Sample && !keys.Contains(x.Key));
             if (Current != null && !Current.Sample && !keys.Contains(Current.Key)) Expire();
         }
-        internal void Filter(Func<AppMessage, bool> keep)
+        internal void Filter(Func<AppMessage, bool> keep, bool reserveQuietInterval = true)
         {
             queue.RemoveAll(x => !x.Sample && !keep(x));
-            if (Current != null && !Current.Sample && !keep(Current)) Expire();
+            if (Current == null || Current.Sample || keep(Current)) return;
+            if (reserveQuietInterval) { Expire(); return; }
+            // Opening the player consumes its media toast, not the next app's time slot.
+            timer.Stop(); held = false; Current = null;
+            queue.RemoveAll(x => now() - x.Created > TimeSpan.FromSeconds(10));
+            if (queue.Count > 0 && now() - batchStart < TimeSpan.FromSeconds(10))
+            {
+                var next = queue[0]; queue.RemoveAt(0); Show(next);
+            }
+            else { queue.Clear(); Notify(); }
         }
         internal void Cancel(bool notify = true)
         {

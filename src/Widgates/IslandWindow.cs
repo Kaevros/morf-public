@@ -147,6 +147,7 @@ namespace Widgates
             Resources[SystemColors.HighlightBrushKey] = ThemePalette.Hover;
             Resources[SystemColors.HighlightTextBrushKey] = ThemePalette.Text;
             PopupTheme.ApplyTooltips(Resources);
+            PopupTheme.ApplyScrollBars(Resources);
 
             media = new MediaController(Dispatcher);
             hover = new HoverIntent(Dispatcher, () => SetExpanded(true), () => !closed && IsVisible && shell.IsMouseOver && panelState.CanHover(Suppressed, temporaryHide.Active));
@@ -621,15 +622,17 @@ namespace Widgates
 
             // Shared shell for compact and expanded states.
             shellGrid = new Grid();
+            shellGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            shellGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             shellGrid.Children.Add(compact);
             expandedLayout = new Grid();
             expandedLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            expandedLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             panelViewport = new ScrollViewer { Content = panel, BorderThickness = new Thickness(0), Padding = new Thickness(0), VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
             expandedLayout.Children.Add(panelViewport);
-            playerFooter = new StackPanel { Margin = new Thickness(20, 0, 20, 14) };
+            playerFooter = new StackPanel { Margin = new Thickness(0, 14, 0, 0) };
             playerFooter.Children.Add(playbackControls); playerFooter.Children.Add(volumePanel);
-            Grid.SetRow(playerFooter, 1); expandedLayout.Children.Add(playerFooter);
+            // Keep the complete player together. Shelf growth starts below its controls.
+            panel.Children.Insert(panel.Children.IndexOf(shelfSection), playerFooter);
             BindingOperations.SetBinding(expandedLayout, UIElement.VisibilityProperty, new Binding("Visibility") { Source = panel });
             BindingOperations.SetBinding(expandedLayout, UIElement.OpacityProperty, new Binding("Opacity") { Source = panel });
             shellGrid.Children.Add(expandedLayout);
@@ -685,6 +688,7 @@ namespace Widgates
 
             Deactivated += (_, __) =>
             {
+                if (closed) return;
                 CancelTrackSwipe();
                 if (pinned && !panelState.Persistent && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !SettingsOpen)
                     ClosePanel();
@@ -745,7 +749,7 @@ namespace Widgates
             };
 
             media.Changed += UpdateMedia;
-            peek.Changed += () => { if (!closed) { UpdateCompactContent(); UpdateState(true); } };
+            peek.Changed += () => { if (!closed) { if (peek.Active) lastMediaPreviewIdentity = media.TrackIdentity; UpdateCompactContent(); UpdateState(true); } };
             media.TimelineChanged += () =>
             {
                 if (!expanded || !IsVisible) return;
@@ -830,7 +834,6 @@ namespace Widgates
 
         private void OpenPinned()
         {
-            messages.Cancel(false);
             if (SettingsOpen) { settingsWindow.Activate(); return; }
             if (Suppressed) return;
             hover.Cancel();
@@ -854,6 +857,7 @@ namespace Widgates
 
         private void UpdateVisibility()
         {
+            if (closed) return;
             if (messages.Active && !MessageAllowed) messages.Cancel(false);
             if (placement == null)
                 return;
@@ -905,7 +909,12 @@ namespace Widgates
         private void SetExpanded(bool value)
         {
             hover.Cancel();
-            if (value) { peek.Cancel(false); UpdateCompactContent(); }
+            if (value)
+            {
+                peek.Cancel(false);
+                messages.Filter(message => !IsMediaNotification(message), false);
+                UpdateCompactContent();
+            }
             if (expanded == value)
                 return;
             expanded = value;
@@ -973,8 +982,9 @@ namespace Widgates
             bool hidden = HiddenAtRest;
             bool animateToHidden = hidden && animate && (compact.Visibility == Visibility.Visible || messageView.Visibility == Visibility.Visible) && stateHeight > 4 && !expanded;
             material.Update(settings, SystemParameters.HighContrast);
-            if (messages.Active) { ReleaseExpansionLayout(); RenderNotification(animate); return; }
-            HideNotificationView(animate);
+            if (messages.Active && !expanded) { ReleaseExpansionLayout(); RenderNotification(animate); return; }
+            double inlineHeight = messages.Active ? RenderInlineNotification() : 0;
+            if (!messages.Active) HideNotificationView(animate);
             shell.BorderThickness = hidden ? new Thickness(0) : FloatingMode ? new Thickness(SystemParameters.HighContrast || settings.Style == SurfaceStyle.LiquidGlass ? 1 : 0) : DockLayout.Outline(dockEdge);
             if (!expanded) { applicationMenu.IsOpen = false; CancelTrackSwipe(); }
             double targetWidth;
@@ -988,10 +998,8 @@ namespace Widgates
                 ApplyPlayerWidth(targetWidth);
                 panel.Visibility = Visibility.Visible;
                 panel.Measure(new Size(targetWidth - shell.BorderThickness.Left - shell.BorderThickness.Right, double.PositiveInfinity));
-                playerFooter.Measure(new Size(targetWidth - 2, double.PositiveInfinity));
-                double footer = playerFooter.DesiredSize.Height;
-                panelViewport.MaxHeight = Math.Max(0, available.Height - NormalIslandGap - footer - 2);
-                targetHeight = Math.Min(available.Height - NormalIslandGap, panel.DesiredSize.Height + footer + 4);
+                panelViewport.MaxHeight = Math.Max(0, available.Height - NormalIslandGap - inlineHeight - 2);
+                targetHeight = Math.Min(available.Height - NormalIslandGap, panel.DesiredSize.Height + inlineHeight + 4);
                 targetRadius = FloatingMode ? new CornerRadius(28) : DockLayout.Corners(dockEdge, 28);
             }
             else
@@ -1067,7 +1075,7 @@ namespace Widgates
             if (expanded || panel.Visibility == Visibility.Visible)
             {
                 double layoutWidth = expanded ? targetWidth - shell.BorderThickness.Left - shell.BorderThickness.Right : expandedLayout.ActualWidth;
-                double layoutHeight = expanded ? targetHeight - shell.BorderThickness.Top - shell.BorderThickness.Bottom : expandedLayout.ActualHeight;
+                double layoutHeight = expanded ? targetHeight - inlineHeight - shell.BorderThickness.Top - shell.BorderThickness.Bottom : expandedLayout.ActualHeight;
                 expandedLayout.Width = Math.Max(1, layoutWidth);
                 expandedLayout.Height = Math.Max(1, layoutHeight);
                 expandedLayout.HorizontalAlignment = HorizontalAlignment.Center;
@@ -1222,6 +1230,7 @@ namespace Widgates
             mediaTitle.ToolTip = mediaArtist.ToolTip = null;
             if (!media.IsPlaying) peek.Cancel();
             peek.DurationSeconds = settings.PeekSeconds;
+            messages.Filter(message => !IsMediaNotification(message) || !expanded, false);
             peek.Observe(media.TrackIdentity, media.IsPlaying, PeekAllowed, media.PlaybackRevision > 0);
 
             if (media.Thumbnail != null)
@@ -1303,7 +1312,8 @@ namespace Widgates
             compact.Height = peek.Active ? 48 : 36;
             compactMarquee.Width = hasMedia ? width - (count > 0 ? 88 : 72) : count > 0 ? 62 : 0;
             compactMarquee.Visibility = hasMedia || count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            compactArtist.Text = string.IsNullOrWhiteSpace(media.Artist) ? (media.Active == null ? "" : MediaSourceNames.Friendly(media.Active.SourceAppUserModelId)) : media.Artist;
+            compactArtist.Text = peek.Active ? MediaNotification.Detail(media.Artist, media.Album)
+                : string.IsNullOrWhiteSpace(media.Artist) ? "" : media.Artist;
             compactArtist.Width = Math.Max(0, compactMarquee.Width); compactArtist.Visibility = peek.Active ? Visibility.Visible : Visibility.Collapsed;
             compactMarquee.SetText(hasMedia ? (string.IsNullOrWhiteSpace(media.Title) ? "Medya" : media.Title)
                 : count > 0 ? count + " dosya" : "");
@@ -1655,6 +1665,7 @@ namespace Widgates
             // The inbox scrollbar uses a fixed light track even inside a dark island.
             list.Resources["MorfScrollThumb"] = Muted;
             var style = new Style(typeof(System.Windows.Controls.Primitives.ScrollBar));
+            style.Setters.Add(new Setter(Control.OverridesDefaultStyleProperty, true));
             style.Setters.Add(new Setter(Control.BackgroundProperty, subtle ? Brushes.Transparent : ShelfBg));
             style.Setters.Add(new Setter(FrameworkElement.HeightProperty, 12.0));
             style.Setters.Add(new Setter(Control.TemplateProperty, (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
@@ -1901,7 +1912,7 @@ namespace Widgates
             }
             compactMarquee.SetActive(visible && !messages.Active && !LightMode && !expanded && !HiddenAtRest && settings.ScrollTitles && media.IsPlaying);
             UpdateIdleClock(visible && !messages.Active && !expanded && !HiddenAtRest);
-            bool ticking = visible && !messages.Active && expanded && settings.ShowTimeline && media.IsPlaying
+            bool ticking = visible && expanded && settings.ShowTimeline && media.IsPlaying
                 && media.Timeline != null && media.Timeline.Valid && !scrubbing;
             UpdateProgressClock(ticking);
         }
@@ -1970,7 +1981,7 @@ namespace Widgates
 
         private async void OnVolumeWheel(object sender, MouseWheelEventArgs e)
         {
-            if (messages.Active) return;
+            if (messages.Active && (!expanded || messageView.IsMouseOver)) return;
             if (!settings.ScrollVolumeOnWholeIsland && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
             if (panelViewport.ScrollableHeight > 0 && panelViewport.IsMouseOver && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
             if (!settings.ScrollVolume || SettingsOpen || sessions.IsDropDownOpen || files.IsMouseOver || sessions.IsMouseOver || seekSlider.IsMouseOver || e.Delta == 0) return;

@@ -16,7 +16,7 @@
 
 Morf, günlük medya ve dosya işlemlerini ekran kenarındaki küçük bir panelde toplar. İşaretçinizle veya **Ctrl + Alt + M** ile açın; oynatmayı yönetin, uygulama seslerini ayarlayın veya dosyaları pencereler arasında taşıyacağınız rafa bırakın.
 
-**Durum:** `0.3.0-preview`. İlk genel ikili dağıtım hazırlanıyor. İmzalama, antivirüs incelemesi ve kalan cihaz denemeleri [yayın hazırlığında](docs/RELEASING.md) listelenir.
+**Durum:** `0.3.2-preview`. İlk genel ikili dağıtım hazırlanıyor. İmzalama, antivirüs incelemesi ve kalan cihaz denemeleri [yayın hazırlığında](docs/RELEASING.md) listelenir.
 
 ## Görünüm
 

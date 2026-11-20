@@ -155,8 +155,11 @@ namespace Widgates
                     var root = (Border)small.Content; root.Width = width; root.Height = 280;
                     root.Measure(new Size(width, 280)); root.Arrange(new Rect(0, 0, width, 280)); root.UpdateLayout();
                     var play = (Button)typeof(IslandWindow).GetField("play", Private).GetValue(small);
+                    var playerContent = (StackPanel)typeof(IslandWindow).GetField("panel", Private).GetValue(small);
+                    viewport.ScrollToVerticalOffset(play.TranslatePoint(new Point(), playerContent).Y); root.UpdateLayout();
                     var point = play.TranslatePoint(new Point(play.ActualWidth / 2, play.ActualHeight), root);
-                    Check(Math.Abs(point.X - width / 2) < 1 && point.Y <= 280 && viewport.ScrollableHeight > 0, "Constrained shelf panel keeps playback centered and visible at " + width + " DIP");
+                    Check(Math.Abs(point.X - width / 2) < 1 && point.Y >= 0 && point.Y <= 280 && viewport.ScrollableHeight > 0,
+                        "Constrained shelf panel keeps playback centered and reachable through native scrolling at " + width + " DIP");
                 }
             }
             finally { small.Close(); }
