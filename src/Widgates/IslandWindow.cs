@@ -38,6 +38,8 @@ namespace Widgates
         private static readonly Brush EdgeHitArea = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
         private readonly MediaController media;
         private readonly DispatcherTimer collapse;
+        private readonly Grid hoverSurface;
+        private readonly Border topHoverGap;
         private readonly Border shell;
         private readonly Grid shellGrid;
         private readonly Grid compact;
@@ -119,9 +121,17 @@ namespace Widgates
 
         internal IslandWindow() : this(WidgetSettings.Load(WidgetSettings.DefaultPath)) { }
 
-        internal IslandWindow(WidgetSettings settings)
+        internal IslandWindow(WidgetSettings settings, string stopwatchPath = null)
         {
             this.settings = settings;
+            this.stopwatchPath = stopwatchPath;
+            savedStopwatchElapsed = stopwatchPath == null ? null : StopwatchState.Load(stopwatchPath);
+            clocks = new ClockTools(savedStopwatchElapsed);
+            if (clocks.StopwatchActive)
+            {
+                selectedClockTool = ClockTool.Stopwatch;
+                clockSetupOpen = true;
+            }
             Title = "Morf";
             Icon = BrandAssets.WindowIcon;
             Width = HostWidth;
@@ -150,7 +160,7 @@ namespace Widgates
             PopupTheme.ApplyScrollBars(Resources);
 
             media = new MediaController(Dispatcher);
-            hover = new HoverIntent(Dispatcher, () => SetExpanded(true), () => !closed && IsVisible && shell.IsMouseOver && panelState.CanHover(Suppressed, temporaryHide.Active));
+            hover = new HoverIntent(Dispatcher, () => SetExpanded(true), () => !closed && IsVisible && IsPointerOverIsland && panelState.CanHover(Suppressed, temporaryHide.Active));
             sleep = new SleepPauseTimer(Dispatcher, valid => media.PausePlayingAsync(valid));
             peek = new TrackPeek(Dispatcher);
             temporaryHide = new TemporaryHide(Dispatcher);
@@ -165,7 +175,7 @@ namespace Widgates
             collapse.Tick += (_, __) =>
             {
                 collapse.Stop();
-                if (!shell.IsMouseOver && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
+                if (!IsPointerOverIsland && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
                     SetExpanded(false);
             };
 
@@ -179,6 +189,7 @@ namespace Widgates
             compact.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Dot / Cover
             compact.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Title
             compact.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Badge / Count
+            compact.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Clock tools
 
             // Dot / Cover container
             compactMarkContainer = new Grid
@@ -249,6 +260,7 @@ namespace Widgates
             compactClock.IsHitTestVisible = false;
             Grid.SetColumnSpan(compactClock, 3);
             compact.Children.Add(compactClock);
+            InitializeCompactClockTools();
 
             // Expanded player.
             panel = new StackPanel
@@ -294,6 +306,7 @@ namespace Widgates
                 item.Click += async (_, __) => await OpenMediaApplicationAsync(selected);
                 applicationMenu.Items.Add(item);
             }
+            applicationMenu.Items.Add(CreateClockMenuItem("Geri sayım ve kronometre", CountdownGlyph, OpenClockTools));
             applicationMenu.Opened += (_, __) => { collapse.Stop(); sessions.IsDropDownOpen = false; };
             applicationMenu.Closed += (_, __) => { if (!closed) collapse.Start(); };
             launchButton = CreateIconButton(Geometry.Parse("M 2 2 L 6 2 L 6 6 L 2 6 Z M 10 2 L 14 2 L 14 6 L 10 6 Z M 2 10 L 6 10 L 6 14 L 2 14 Z M 10 10 L 14 10 L 14 14 L 10 14 Z"),
@@ -328,6 +341,7 @@ namespace Widgates
             sessions.PreviewMouseWheel += (_, e) => { if (!sessions.IsDropDownOpen) e.Handled = true; };
             header.Children.Add(sessions);
             panel.Children.Add(header);
+            panel.Children.Add(playerContent);
 
             // Now playing card
             var mediaCard = new Border
@@ -401,7 +415,7 @@ namespace Widgates
             mediaApplicationButton.PreviewMouseLeftButtonUp += EndTrackSwipe;
             mediaApplicationButton.LostMouseCapture += (_, __) => CancelTrackSwipe();
             mediaCard.Child = mediaApplicationButton;
-            panel.Children.Add(mediaCard);
+            playerContent.Children.Add(mediaCard);
 
             applicationPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             var applicationRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
@@ -413,7 +427,7 @@ namespace Widgates
                 button.Margin = new Thickness(6, 0, 6, 0);
                 applicationRow.Children.Add(button);
             }
-            applicationPanel.Children.Add(applicationRow); panel.Children.Add(applicationPanel);
+            applicationPanel.Children.Add(applicationRow); playerContent.Children.Add(applicationPanel);
 
             timelinePanel = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(2, 0, 2, 10) };
             seekSlider = new Slider { Minimum = 0, Maximum = 1, Height = 28, IsMoveToPointEnabled = true,
@@ -436,7 +450,7 @@ namespace Widgates
             timeLabels.Children.Add(durationLabel);
             timeLabels.Children.Add(elapsedLabel);
             timelinePanel.Children.Add(timeLabels);
-            panel.Children.Add(timelinePanel);
+            playerContent.Children.Add(timelinePanel);
 
             // Playback controls row
             var controls = playbackControls = new Grid
@@ -538,7 +552,7 @@ namespace Widgates
             volumePanel.GotKeyboardFocus += async (_, __) => await UseVolumeAsync(volume => volume.ReadAsync());
             retry.HorizontalAlignment = HorizontalAlignment.Center;
             retry.Margin = new Thickness(0, 8, 0, 0);
-            panel.Children.Add(retry);
+            playerContent.Children.Add(retry);
 
             // Divider
             shelfSection = new StackPanel { Visibility = Visibility.Collapsed };
@@ -631,8 +645,11 @@ namespace Widgates
             expandedLayout.Children.Add(panelViewport);
             playerFooter = new StackPanel { Margin = new Thickness(0, 14, 0, 0) };
             playerFooter.Children.Add(playbackControls); playerFooter.Children.Add(volumePanel);
+            clockPanel = CreateClockPanel();
+            RenderClockPanel(ClockTools.GetTickCount64());
+            playerFooter.Children.Add(clockPanel);
             // Keep the complete player together. Shelf growth starts below its controls.
-            panel.Children.Insert(panel.Children.IndexOf(shelfSection), playerFooter);
+            playerContent.Children.Add(playerFooter);
             BindingOperations.SetBinding(expandedLayout, UIElement.VisibilityProperty, new Binding("Visibility") { Source = panel });
             BindingOperations.SetBinding(expandedLayout, UIElement.OpacityProperty, new Binding("Opacity") { Source = panel });
             shellGrid.Children.Add(expandedLayout);
@@ -655,7 +672,18 @@ namespace Widgates
                 Height = 36,
                 ClipToBounds = true
             };
-            Content = shell;
+            topHoverGap = new Border
+            {
+                // A layered window needs nonzero alpha to receive pointer events in the gap.
+                Background = EdgeHitArea, Visibility = Visibility.Collapsed,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top
+            };
+            topHoverGap.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = shell });
+            topHoverGap.SetBinding(HeightProperty, new Binding("Margin.Top") { Source = shell });
+            hoverSurface = new Grid();
+            hoverSurface.Children.Add(topHoverGap);
+            hoverSurface.Children.Add(shell);
+            Content = hoverSurface;
 
             // Drag and drop events on shell
             shell.PreviewDragEnter += OnDragOver;
@@ -664,11 +692,8 @@ namespace Widgates
             shell.PreviewDrop += OnDrop;
             shell.PreviewMouseWheel += OnVolumeWheel;
 
-            // Hover events on shell
-            shell.MouseEnter += (_, __) =>
-            {
-                OnShellMouseEnter();
-            };
+            // Moving between the shell and its top gap stays within this hover surface.
+            hoverSurface.MouseEnter += (_, __) => OnShellMouseEnter();
             shell.MouseLeftButtonDown += (_, e) =>
             {
                 if (!expanded)
@@ -677,12 +702,12 @@ namespace Widgates
                     e.Handled = true;
                 }
             };
-            shell.MouseLeave += (_, __) =>
+            hoverSurface.MouseLeave += (_, __) =>
             {
                 peek.Release();
                 messages.Release();
                 hover.Cancel();
-                if (!pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
+                if (expanded && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
                     collapse.Start();
             };
 
@@ -695,7 +720,7 @@ namespace Widgates
             };
             PreviewKeyDown += (_, e) =>
             {
-                if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control && shelf.CanUndo) { UndoShelfRemoval(); e.Handled = true; }
+                if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control && shelf.CanUndo && !(Keyboard.FocusedElement is TextBox)) { UndoShelfRemoval(); e.Handled = true; }
                 else if (e.Key == Key.Escape && messages.Active) { messages.Cancel(); e.Handled = true; }
                 else if (e.Key == Key.Escape && trackSwipe.Active)
                 {
@@ -708,9 +733,9 @@ namespace Widgates
                 }
             };
 
-            ContextMenuOpening += (_, e) => { e.Handled = true; OpenSettings(); };
+            shell.ContextMenuOpening += (_, e) => { if (!(e.Source is TextBox)) { e.Handled = true; OpenSettings(); } };
             IsVisibleChanged += (_, __) => { if (!IsVisible) { applicationMenu.IsOpen = false; CancelTrackSwipe(); if (mixerWindow != null) mixerWindow.Close(); } };
-            shell.MouseRightButtonUp += (_, e) => { e.Handled = true; OpenSettings(); };
+            shell.MouseRightButtonUp += (_, e) => { if (!clockPanel.IsMouseOver) { e.Handled = true; OpenSettings(); } };
             SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
             SystemEvents.TimeChanged += OnClockTimeChanged;
             SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
@@ -728,6 +753,7 @@ namespace Widgates
             Closing += (_, e) =>
             {
                 if (shellServices && !exitConfirmed) { e.Cancel = true; Dispatcher.BeginInvoke(new Action(RequestExit)); return; }
+                SaveStopwatch(ClockTools.GetTickCount64());
                 closed = true;
                 if (mixerWindow != null) mixerWindow.Close(); audioMirror.Dispose();
                 if (bannerRouting != null) bannerRouting.Dispose();
@@ -741,6 +767,7 @@ namespace Widgates
                 collapse.Stop();
                 progress.Stop();
                 clockTimer.Stop();
+                clockToolsTick.Stop();
                 hover.Dispose(); sleep.Dispose(); peek.Dispose(); if (power != null) power.Dispose();
                 compactMarquee.SetActive(false);
                 media.Dispose();
@@ -931,7 +958,7 @@ namespace Widgates
 
         private bool HasActivity
         {
-            get { return media.IsPlaying || !string.IsNullOrWhiteSpace(media.Title) || shelf.Paths.Count > 0; }
+            get { return media.IsPlaying || !string.IsNullOrWhiteSpace(media.Title) || shelf.Paths.Count > 0 || clocks.Preview != ClockTool.None; }
         }
         private bool Suppressed { get { return placement != null && (placement.RuleHidden || (settings.HideInGames && placement.GameActive && !placement.RuleShown)); } }
         private bool LightMode { get { return power == null ? settings.Lightweight == LightweightMode.Always : power.State.Light(settings.Lightweight); } }
@@ -941,6 +968,7 @@ namespace Widgates
             get { return HiddenPreference && !peek.Active && !messages.Active; }
         }
         private bool FloatingMode { get { return settings.DisplayMode == DisplayMode.DynamicIsland; } }
+        private bool IsPointerOverIsland { get { return hoverSurface.IsMouseOver; } }
         private bool HiddenPreference { get { return !expanded && !FloatingMode && (settings.EdgeOnly || settings.AutoHide || (settings.HideWhenIdle && !HasActivity)); } }
 
         private double NormalIslandGap
@@ -948,7 +976,8 @@ namespace Widgates
             get
             {
                 double available = placement == null ? SystemParameters.WorkArea.Height : placement.AvailableSize.Height;
-                return FloatingMode ? Math.Min(16, Math.Max(0, available - 36)) : 0;
+                double gap = !expanded && dockEdge == DockEdge.Top ? 8 : 16;
+                return FloatingMode ? Math.Min(gap, Math.Max(0, available - 36)) : 0;
             }
         }
         private bool PeekAllowed { get { return settings.PeekTrackChanges && !messages.Active && !temporaryHide.Active && HiddenPreference && !SettingsOpen && !pinned && !Suppressed && IsVisible
@@ -977,11 +1006,13 @@ namespace Widgates
 
         private void UpdateState(bool animate)
         {
+            topHoverGap.Visibility = expanded && FloatingMode && dockEdge == DockEdge.Top ? Visibility.Visible : Visibility.Collapsed;
             if (!MessageContextAllowed) pendingNotification = null;
             if (messages.Active && !MessageAllowed) messages.Cancel(false);
             bool hidden = HiddenAtRest;
             bool animateToHidden = hidden && animate && (compact.Visibility == Visibility.Visible || messageView.Visibility == Visibility.Visible) && stateHeight > 4 && !expanded;
             material.Update(settings, SystemParameters.HighContrast);
+            UpdateClockMaterial();
             if (messages.Active && !expanded) { ReleaseExpansionLayout(); RenderNotification(animate); return; }
             double inlineHeight = messages.Active ? RenderInlineNotification() : 0;
             if (!messages.Active) HideNotificationView(animate);
@@ -998,15 +1029,20 @@ namespace Widgates
                 ApplyPlayerWidth(targetWidth);
                 panel.Visibility = Visibility.Visible;
                 panel.Measure(new Size(targetWidth - shell.BorderThickness.Left - shell.BorderThickness.Right, double.PositiveInfinity));
-                panelViewport.MaxHeight = Math.Max(0, available.Height - NormalIslandGap - inlineHeight - 2);
-                targetHeight = Math.Min(available.Height - NormalIslandGap, panel.DesiredSize.Height + inlineHeight + 4);
+                double availableHeight = Math.Max(0, available.Height - NormalIslandGap);
+                double contentHeight = panel.DesiredSize.Height;
+                double viewportHeight = Math.Max(0, availableHeight - inlineHeight - shell.BorderThickness.Top - shell.BorderThickness.Bottom);
+                panelViewport.MaxHeight = viewportHeight;
+                panelViewport.VerticalScrollBarVisibility = clockPanel.Visibility == Visibility.Visible && contentHeight <= viewportHeight
+                    ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+                targetHeight = Math.Min(availableHeight, contentHeight + inlineHeight + 4);
                 targetRadius = FloatingMode ? new CornerRadius(28) : DockLayout.Corners(dockEdge, 28);
             }
             else
             {
                 bool hasTrack = !string.IsNullOrWhiteSpace(media.Title);
                 bool isPlaying = media.IsPlaying || hasTrack;
-                if (isPlaying)
+                if (isPlaying && !(ShowCompactClockTools && !media.IsPlaying))
                 {
                     targetWidth = peek.Active ? Math.Max(240, settings.CompactWidth) : settings.CompactWidth;
                 }
@@ -1041,7 +1077,7 @@ namespace Widgates
             UpdateLiveVisuals();
 
             bool reducedMotion = !SystemParameters.ClientAreaAnimation || LightMode || (power != null && !power.State.RenderAllowed);
-            if (!animate || reducedMotion || (hidden && !animateToHidden))
+            if (!animate || reducedMotion || (expanded && messages.Active) || (hidden && !animateToHidden))
             {
                 ReleaseExpansionLayout();
                 shell.BeginAnimation(FrameworkElement.WidthProperty, null);
@@ -1301,29 +1337,36 @@ namespace Widgates
             finally { if (!closed) { applicationPanel.IsEnabled = true; launchButton.IsEnabled = true; } }
         }
 
-        private void UpdateCompactContent()
+        private void UpdateCompactContent() { RenderCompactContent(media.IsPlaying); }
+
+        private void RenderCompactContent(bool playing)
         {
-            bool hasMedia = media.IsPlaying || !string.IsNullOrWhiteSpace(media.Title);
+            bool showClockTools = ShowCompactClockTools;
+            bool showTimeValue = showClockTools && !playing;
+            bool hasMedia = !showTimeValue && (playing || !string.IsNullOrWhiteSpace(media.Title));
             int count = shelf.Paths.Count;
-            bool showClock = !hasMedia && count == 0 && !settings.EdgeOnly && !settings.AutoHide;
+            bool showShelf = !showTimeValue && count > 0;
+            bool showClock = !showClockTools && !hasMedia && count == 0 && !settings.EdgeOnly && !settings.AutoHide;
             compactClock.Visibility = showClock ? Visibility.Visible : Visibility.Collapsed;
-            compactMarkContainer.Visibility = showClock ? Visibility.Collapsed : Visibility.Visible;
+            compactMarkContainer.Visibility = showClock || showTimeValue ? Visibility.Collapsed : Visibility.Visible;
             double width = peek.Active ? Math.Max(240, settings.CompactWidth) : settings.CompactWidth;
             compact.Height = peek.Active ? 48 : 36;
-            compactMarquee.Width = hasMedia ? width - (count > 0 ? 88 : 72) : count > 0 ? 62 : 0;
-            compactMarquee.Visibility = hasMedia || count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            double clockWidth = showClockTools && playing ? CompactClockIconWidth : 0;
+            compactMarquee.Width = hasMedia ? width - (showShelf ? 88 : 72) - clockWidth : showShelf ? 62 : 0;
+            compactMarquee.Visibility = hasMedia || showShelf ? Visibility.Visible : Visibility.Collapsed;
             compactArtist.Text = peek.Active ? MediaNotification.Detail(media.Artist, media.Album)
                 : string.IsNullOrWhiteSpace(media.Artist) ? "" : media.Artist;
             compactArtist.Width = Math.Max(0, compactMarquee.Width); compactArtist.Visibility = peek.Active ? Visibility.Visible : Visibility.Collapsed;
             compactMarquee.SetText(hasMedia ? (string.IsNullOrWhiteSpace(media.Title) ? "Medya" : media.Title)
-                : count > 0 ? count + " dosya" : "");
+                : showShelf ? count + " dosya" : "");
             compactTitle.Visibility = compactTitle.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-            compactCount.Text = hasMedia && count > 0 ? "· " + count : "";
+            compactCount.Text = hasMedia && showShelf ? "· " + count : "";
             compactCount.Visibility = compactCount.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
             compactCoverImage.Source = hasMedia ? media.Thumbnail : null;
             compactCoverBorder.Visibility = hasMedia && media.Thumbnail != null ? Visibility.Visible : Visibility.Collapsed;
             compactMusicFallback.Visibility = hasMedia && media.Thumbnail == null ? Visibility.Visible : Visibility.Collapsed;
             compactDot.Visibility = hasMedia ? Visibility.Collapsed : Visibility.Visible;
+            ConfigureCompactClockTools(showClockTools, playing);
         }
 
         private void OnDragOver(object sender, DragEventArgs e)
@@ -1911,7 +1954,9 @@ namespace Widgates
                 volumePanel.BeginAnimation(UIElement.OpacityProperty, null);
             }
             compactMarquee.SetActive(visible && !messages.Active && !LightMode && !expanded && !HiddenAtRest && settings.ScrollTitles && media.IsPlaying);
-            UpdateIdleClock(visible && !messages.Active && !expanded && !HiddenAtRest);
+            bool compactVisible = visible && !messages.Active && !expanded && !HiddenAtRest;
+            UpdateClockTools(visible, compactVisible);
+            UpdateIdleClock(compactVisible);
             bool ticking = visible && expanded && settings.ShowTimeline && media.IsPlaying
                 && media.Timeline != null && media.Timeline.Valid && !scrubbing;
             UpdateProgressClock(ticking);
@@ -1982,6 +2027,7 @@ namespace Widgates
         private async void OnVolumeWheel(object sender, MouseWheelEventArgs e)
         {
             if (messages.Active && (!expanded || messageView.IsMouseOver)) return;
+            if (clockPanel.IsMouseOver) return;
             if (!settings.ScrollVolumeOnWholeIsland && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
             if (panelViewport.ScrollableHeight > 0 && panelViewport.IsMouseOver && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
             if (!settings.ScrollVolume || SettingsOpen || sessions.IsDropDownOpen || files.IsMouseOver || sessions.IsMouseOver || seekSlider.IsMouseOver || e.Delta == 0) return;

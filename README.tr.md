@@ -46,6 +46,7 @@ Görüntüler mevcut Windows arayüzünden örnek medya ve ses oturumlarıyla ü
 - **Geçici dosya rafı:** yerel dosya ve klasörleri bırakın, sıralayın veya gruplayın; ardından başka pencereye kopya olarak sürükleyin ya da yapıştırmak için kopyalayın. Asıllar yerinde kalır.
 - **Windows bildirimleri:** uygulama tercihleri, içerik gizleme, okunabilir metin, kaydırarak kapatma ve kaynak uygulamayı açma. WhatsApp sohbeti uygulama içinden seçilir. Canlı bildirimler MSIX sürümü ve Windows izni gerektirir.
 - **Kapalı görünümler:** kapsül, ince çizgi, otomatik gizleme ve dinamik ada. Uygun görünür modlarda boşta saat gösterilir.
+- **Zaman araçları:** oynatıcının altında geri sayım ve kronometre denetimleri, kapalı görünümde sayaç göstergesi. Kronometre yeniden açılışta kayıtlı süresinden duraklatılmış olarak devam etmeye hazırdır; geri sayım mevcut uygulama oturumu boyunca tutulur.
 - **Görünüm ve davranış:** açık/koyu/sistem teması, yüzey saydamlığı, sabitleme, ekran seçimi, uygulama kuralları ve azaltılmış hareket desteği.
 - **Medya geçişi:** diğer kaynakları isteğe bağlı duraklatma ve Morf'un daha önce duraklattığı müziğe kontrollü dönüş.
 
@@ -88,6 +89,7 @@ Kontroller, mevcut kullanıcıya kurulum ve bildirimli MSIX için [derleme belge
 | Ayarları aç | Dişli simgesi veya adaya sağ tıklama |
 | Paneli açık tut | Sabitleme simgesi |
 | Ses karıştırıcısını aç | Dikey sürgü simgesi |
+| Geri sayım veya kronometreyi aç | Medya uygulaması başlatma menüsündeki saat simgesi |
 | Parça değiştir | Önceki/sonraki düğmeleri veya açık parça alanını kaydırma |
 | Paneli kapat | `Esc` |
 | Uygulamadan çık | Ayarlar veya bildirim alanı menüsü; onay gerekir |
@@ -97,6 +99,8 @@ Ek medya kısayolları ayarlardan tanımlanabilir. Oyun ve uygulama gizleme kura
 ## Veriler ve izinler
 
 Morf mevcut kullanıcı yetkileriyle çalışır. Tercihler `%LOCALAPPDATA%\Morf` altında, raf ve bildirim metinleri bellekte tutulur. Raf en fazla **24 yerel yol** içerir ve çıkışta temizlenir. Dosya bırakmak aslını taşımaz. Pano yalnızca açık kopyalama işleminizle değişir.
+
+Kronometre süresi, çalışırken alınan ara kayıtlarla birlikte yerel `stopwatch.state` dosyasına kaydedilir. Yeniden açılışta duraklatılmış olarak yüklenir; Morf kapalıyken geçen süre eklenmez. Sıfırlama kayıtlı süreyi temizler. Geri sayım durumu bellekte tutulur.
 
 Raf; ağ yollarını, reparse point içeren yolları ve bazı bulut yer tutucularını kabul etmez. Eksik veya desteklenmeyen dosyalar çalıştırılmaz. Ses çoğaltma, oynatma çıkışının sesini bellekte okur; mikrofon kaydı özelliği değildir ve ses dosyası oluşturmaz.
 

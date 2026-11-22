@@ -94,6 +94,8 @@ Use an existing owner-selected signing certificate and a fresh output directory:
 .\scripts\Build-FriendSetup.ps1 -CertificateThumbprint '<existing signing certificate>' -OutputDirectory 'artifacts/friend-setup-new'
 ```
 
+Use `-PackageRevision 1` (or the next revision) when rebuilding the same product version for an MSIX update. The package, setup metadata and archive name include that revision.
+
 The archive contains `Kurulum.exe`, the signed notification-capable MSIX, public-only `Morf.cer`, `KURULUM.txt` and `SHA256.txt`. The builder signs and verifies the setup executable and MSIX package, verifies the setup's embedded payload hashes and every ZIP entry, and never installs the app or changes certificate trust. The setup runs as the user and opens the Windows certificate and MSIX installers only when their buttons are clicked; first-device certificate trust and notification permission remain explicit user actions. It does not include the private signing key.
 
 `Kurulum.exe --verify` checks payload integrity without opening installers. `--render` writes a setup preview PNG without changing trust or installing the app. These modes support local packaging validation; they do not replace a clean-device installation test.

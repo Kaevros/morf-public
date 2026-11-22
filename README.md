@@ -46,6 +46,7 @@ Screenshots are rendered from the current Windows interface with demonstration m
 - **Temporary file shelf:** drag local files and folders onto Morf, reorder or group them, then drag copies to another window or copy them for pasting. Originals stay where they are.
 - **Windows notifications:** optional previews with application preferences, content visibility, readable text, swipe dismissal and source-application opening. WhatsApp chats are selected inside WhatsApp. Live notifications require the MSIX build and Windows permission.
 - **Compact views:** capsule, thin line, automatic hiding and a floating island. An idle clock appears in supported visible modes.
+- **Time tools:** countdown and stopwatch controls below the player, with a compact indicator. The stopwatch restores its saved elapsed time paused after reopening; countdowns last for the current app session.
 - **Appearance and behavior:** light/dark/system themes, surface transparency, pinning, monitor selection, application rules and reduced-motion support.
 - **Media handoff:** optional pausing of other sources and guarded return to music that Morf previously paused.
 
@@ -88,6 +89,7 @@ See [building and packaging](docs/BUILDING.md) for checks, current-user installa
 | Open settings | Gear icon or right-click the island |
 | Keep the panel open | Pin icon |
 | Open the audio mixer | Vertical sliders icon |
+| Open countdown or stopwatch | Clock icon in the media application launcher menu |
 | Skip a track | Previous/next buttons, or swipe the expanded track area |
 | Collapse the panel | `Esc` |
 | Exit | Settings or the tray menu; confirmation is required |
@@ -97,6 +99,8 @@ Additional media shortcuts can be configured in settings. Game and application h
 ## Data and permissions
 
 Morf runs as the current user. Preferences are stored under `%LOCALAPPDATA%\Morf`; the shelf and notification text are held in memory. The shelf contains up to **24 local paths** and is cleared on exit. Dropping a file does not move it. Clipboard contents change only when you request copying.
+
+Stopwatch elapsed time is saved locally in `stopwatch.state`, including checkpoints while running. It restores paused; time while Morf is closed is not added. Reset clears the saved duration. Countdown state is held in memory.
 
 The shelf rejects network paths, reparse points and some cloud placeholders. Missing or unsupported files are handled without executing them. Audio mirroring uses playback-output loopback in memory; it is not a microphone-recording feature and does not save audio files.
 

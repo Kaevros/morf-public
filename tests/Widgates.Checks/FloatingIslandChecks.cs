@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace Widgates
 {
@@ -24,13 +26,16 @@ namespace Widgates
                 widget.IsHitTestVisible = false; widget.Show(); await Task.Delay(400);
                 typeof(IslandWindow).GetProperty("pinned", Private).SetValue(widget, true, null);
                 var shell = Field<Border>(widget, "shell");
+                var hoverSurface = Field<Grid>(widget, "hoverSurface");
+                var topHoverGap = Field<Border>(widget, "topHoverGap");
                 foreach (var dock in new[] { DockPreference.Top, DockPreference.Bottom })
                 {
                     settings.Dock = dock; Call(widget, "SetExpanded", false); Call(widget, "ApplySettings", false); widget.UpdateLayout();
-                    Check(shell.Height == 36 && (dock == DockPreference.Top ? shell.Margin.Top : shell.Margin.Bottom) == 16,
-                        dock + " keeps an idle floating capsule separated from the edge");
+                    Check(shell.Height == 36 && (dock == DockPreference.Top ? shell.Margin.Top == 8 : shell.Margin.Bottom == 16),
+                        dock + " positions the idle floating capsule at the configured edge inset");
                     Check(shell.CornerRadius.TopLeft == 18 && shell.CornerRadius.BottomRight == 18,
                         dock + " rounds all closed capsule corners");
+                    Check(topHoverGap.Visibility == Visibility.Collapsed, dock + " closed capsule leaves its outer gap outside the hover area");
                     foreach (var theme in new[] { ThemePreference.Dark, ThemePreference.Light })
                     {
                         typeof(ThemePalette).GetField("<Preference>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, theme);
@@ -40,7 +45,36 @@ namespace Widgates
                     Call(widget, "SetExpanded", true); Call(widget, "UpdateState", false); widget.UpdateLayout();
                     Check(shell.CornerRadius.TopLeft == 28 && shell.CornerRadius.BottomRight == 28
                         && (dock == DockPreference.Top ? shell.Margin.Top : shell.Margin.Bottom) == 16,
-                        dock + " expansion preserves the gap and four rounded corners");
+                        dock + " expansion uses the expanded gap and four rounded corners");
+                    widget.IsHitTestVisible = true;
+                    try
+                    {
+                        if (dock == DockPreference.Top)
+                        {
+                            var above = new Point(hoverSurface.ActualWidth / 2, shell.Margin.Top / 2);
+                            Check(hoverSurface.InputHitTest(above) == topHoverGap
+                                && topHoverGap.ActualWidth == shell.ActualWidth && topHoverGap.ActualHeight == shell.Margin.Top
+                                && hoverSurface.InputHitTest(new Point(1, above.Y)) == null,
+                                "The space above the open panel joins its hover surface within the panel width");
+                        }
+                        else Check(topHoverGap.Visibility == Visibility.Collapsed, "Bottom docking leaves the existing hover gap behavior intact");
+                    }
+                    finally { widget.IsHitTestVisible = false; }
+                    if (dock == DockPreference.Top)
+                    {
+                        var timer = Field<DispatcherTimer>(widget, "collapse");
+                        var panelState = Field<PanelState>(widget, "panelState");
+                        panelState.Latched = false;
+                        timer.Stop();
+                        shell.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = UIElement.MouseLeaveEvent });
+                        Check(panelState.Expanded && !timer.IsEnabled, "Leaving the visible shell alone keeps the open panel");
+                        hoverSurface.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = UIElement.MouseLeaveEvent });
+                        Check(timer.IsEnabled, "Leaving both hover regions schedules the existing collapse delay");
+                        await Task.Delay(380);
+                        Check(!panelState.Expanded && !timer.IsEnabled, "Leaving the complete hover surface collapses the panel once");
+                        panelState.Latched = true;
+                        Call(widget, "SetExpanded", true); Call(widget, "UpdateState", false); widget.UpdateLayout();
+                    }
                     Capture(widget, Path.Combine(output, "open-" + dock + ".png"));
                     var picker = Field<ComboBox>(widget, "sessions");
                     foreach (double width in new[] { 240.0, 380.0 })

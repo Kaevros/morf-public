@@ -152,7 +152,7 @@ namespace Widgates
                 {
                     typeof(IslandWindow).GetMethod("ApplyPlayerWidth", Private).Invoke(small, new object[] { width });
                     var viewport = (ScrollViewer)typeof(IslandWindow).GetField("panelViewport", Private).GetValue(small); viewport.MaxHeight = 190;
-                    var root = (Border)small.Content; root.Width = width; root.Height = 280;
+                    var root = (Border)typeof(IslandWindow).GetField("shell", Private).GetValue(small); root.Width = width; root.Height = 280;
                     root.Measure(new Size(width, 280)); root.Arrange(new Rect(0, 0, width, 280)); root.UpdateLayout();
                     var play = (Button)typeof(IslandWindow).GetField("play", Private).GetValue(small);
                     var playerContent = (StackPanel)typeof(IslandWindow).GetField("panel", Private).GetValue(small);

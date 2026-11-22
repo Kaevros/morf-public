@@ -12,6 +12,8 @@ namespace Widgates
         internal Brush Background { get; private set; }
         internal Brush Edge { get; private set; }
         internal Brush Highlight { get; private set; }
+        internal Brush InsetBackground { get; private set; }
+        internal Brush InsetEdge { get; private set; }
 
         internal void Update(WidgetSettings settings, bool highContrast)
         {
@@ -20,11 +22,15 @@ namespace Widgates
                 + (highContrast ? SystemColors.WindowTextColor.ToString() : "");
             if (signature == next) return;
             signature = next;
+            InsetBackground = null;
+            InsetEdge = null;
             if (highContrast)
             {
                 Background = SystemColors.WindowBrush;
                 Edge = SystemColors.WindowTextBrush;
                 Highlight = Brushes.Transparent;
+                InsetBackground = Background;
+                InsetEdge = Edge;
                 return;
             }
             double strength = WidgetSettings.ClampStrength(settings.GlassStrength);
@@ -48,6 +54,8 @@ namespace Widgates
                 edge.GradientStops.Add(new GradientStop(light ? Color.FromArgb(32, 0, 0, 0) : Color.FromArgb(12, 255, 255, 255), 0.62));
                 edge.GradientStops.Add(new GradientStop(Color.FromArgb(90, 255, 255, 255), 1));
                 Edge = Freeze(edge, 1);
+                InsetBackground = Freeze(new SolidColorBrush(color), 0.58);
+                InsetEdge = Freeze(edge.Clone(), 0.52);
                 var lightFall = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
                 lightFall.GradientStops.Add(new GradientStop(Color.FromArgb(20, 255, 255, 255), 0));
                 lightFall.GradientStops.Add(new GradientStop(Colors.Transparent, 0.45));

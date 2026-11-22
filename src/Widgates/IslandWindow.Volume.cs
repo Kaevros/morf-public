@@ -27,7 +27,7 @@ namespace Widgates
                 Dispatcher.BeginInvoke(new Action(() => { repositioning = false; if (!closed && ReferenceEquals(mixerWindow, window) && window.IsVisible) MonitorCatalog.PlaceAudioMixer(window, this, settings.MonitorDevice, dockEdge == DockEdge.Top); }));
             };
             mixerWindow = window;
-            window.Closed += (_, __) => { mixerWindow = null; if (!closed) { UpdateNotificationRouting(); Task refreshVolume = UseVolumeAsync(volume => volume.ReadAsync()); if (!pinned && !shell.IsMouseOver) collapse.Start(); } };
+            window.Closed += (_, __) => { mixerWindow = null; if (!closed) { UpdateNotificationRouting(); Task refreshVolume = UseVolumeAsync(volume => volume.ReadAsync()); if (!pinned && !IsPointerOverIsland) collapse.Start(); } };
             UpdateNotificationRouting();
             window.Show();
         }

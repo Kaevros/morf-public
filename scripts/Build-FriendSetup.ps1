@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$CertificateThumbprint, [string]$OutputDirectory = 'artifacts/friend-setup', [string]$SdkToolsDirectory = '')
+﻿param([Parameter(Mandatory=$true)][string]$CertificateThumbprint, [string]$OutputDirectory = 'artifacts/friend-setup', [string]$SdkToolsDirectory = '', [ValidateRange(0,65535)][int]$PackageRevision = 0)
 
 $ErrorActionPreference = 'Stop'
 $friendRepo = Split-Path $PSScriptRoot -Parent
@@ -8,14 +8,15 @@ try {
     if (-not $friendOutput.StartsWith($friendRepo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Output must remain inside this repository.' }
     New-Item -ItemType Directory -Force -Path $friendOutput | Out-Null
     $friendBuildDirectory = Join-Path $OutputDirectory 'msix-build'
-    & (Join-Path $PSScriptRoot 'Build-NotificationPackage.ps1') -CertificateThumbprint $CertificateThumbprint -OutputDirectory $friendBuildDirectory -SdkToolsDirectory $SdkToolsDirectory
+    & (Join-Path $PSScriptRoot 'Build-NotificationPackage.ps1') -CertificateThumbprint $CertificateThumbprint -OutputDirectory $friendBuildDirectory -SdkToolsDirectory $SdkToolsDirectory -PackageRevision $PackageRevision
     $friendVersionSource = Get-Content src/Widgates/BuildInfo.cs -Raw
     if ($friendVersionSource -notmatch 'Version = "([0-9.]+)-preview"') { throw 'Cannot read product version.' }
     $friendVersion = $Matches[1]
+    $friendVersionLabel = if ($PackageRevision -eq 0) { $friendVersion } else { "$friendVersion.$PackageRevision" }
     $friendLayout = Join-Path $friendOutput 'share'
     if (Test-Path -LiteralPath $friendLayout) { throw 'Choose a fresh output directory; existing share files are preserved.' }
     New-Item -ItemType Directory -Path $friendLayout | Out-Null
-    $friendPackageName = "Morf-$friendVersion-x64.msix"
+    $friendPackageName = "Morf-$friendVersionLabel-x64.msix"
     Copy-Item -LiteralPath (Join-Path $friendOutput "msix-build/Morf-Notifications-$friendVersion-preview-x64.msix") -Destination (Join-Path $friendLayout $friendPackageName)
     $friendCertificate = Get-Item -LiteralPath ("Cert:\CurrentUser\My\" + $CertificateThumbprint)
     Export-Certificate -Cert $friendCertificate -FilePath (Join-Path $friendLayout 'Morf.cer') | Out-Null
@@ -25,10 +26,10 @@ try {
     $friendCertificateHash = (Get-FileHash -LiteralPath (Join-Path $friendLayout 'Morf.cer') -Algorithm SHA256).Hash
     @"
 using System.Reflection;
-[assembly: AssemblyVersion("$friendVersion.0")]
-[assembly: AssemblyFileVersion("$friendVersion.0")]
+[assembly: AssemblyVersion("$friendVersion.$PackageRevision")]
+[assembly: AssemblyFileVersion("$friendVersion.$PackageRevision")]
 internal static class SetupPayload {
- internal const string Version = "$friendVersion-preview";
+ internal const string Version = "$friendVersionLabel-preview";
  internal const string Package = "$friendPackageName";
  internal const string PackageHash = "$friendPackageHash";
  internal const string CertificateHash = "$friendCertificateHash";
@@ -51,7 +52,7 @@ internal static class SetupPayload {
     $friendVerifyProcess = Start-Process -FilePath (Join-Path $friendLayout 'Kurulum.exe') -ArgumentList '--verify' -WindowStyle Hidden -PassThru -Wait
     if ($friendVerifyProcess.ExitCode -ne 0) { throw 'Setup payload verification failed.' }
     @"
-Morf $friendVersion-preview — arkadaş testi / Windows x64
+Morf $friendVersionLabel-preview — arkadaş testi / Windows x64
 
 ZIP'in tamamını bir klasöre çıkarın ve Kurulum.exe dosyasını açın.
 Kurulum penceresi iki açık adım sunar: sertifika ve Windows MSIX kurulumu.
@@ -73,7 +74,7 @@ yalnızca bu pakete ait Morf Preview sertifikasını seçin.
 "@ | Set-Content -LiteralPath (Join-Path $friendLayout 'KURULUM.txt') -Encoding UTF8
     $friendAllowedFiles = @('Kurulum.exe',$friendPackageName,'Morf.cer','KURULUM.txt')
     $friendAllowedFiles | ForEach-Object { (Get-FileHash -LiteralPath (Join-Path $friendLayout $_) -Algorithm SHA256).Hash + '  ' + $_ } | Set-Content -LiteralPath (Join-Path $friendLayout 'SHA256.txt') -Encoding ASCII
-    $friendZip = Join-Path $friendOutput "Morf-$friendVersion-Kurulum-x64.zip"
+    $friendZip = Join-Path $friendOutput "Morf-$friendVersionLabel-Kurulum-x64.zip"
     Compress-Archive -LiteralPath @($friendAllowedFiles + 'SHA256.txt' | ForEach-Object { Join-Path $friendLayout $_ }) -DestinationPath $friendZip
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $friendArchive = [IO.Compression.ZipFile]::OpenRead($friendZip)

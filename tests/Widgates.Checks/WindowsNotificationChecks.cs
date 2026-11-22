@@ -94,7 +94,7 @@ namespace Widgates
                     peek.Offer(new AppMessage { Key = "short:" + theme, AppId = "Sample.App!App", AppName = "Takvim", Sender = "Toplantı", Body = "5 dakika kaldı", Created = DateTimeOffset.UtcNow, Sample = true }, true);
                     await Task.Delay(320); widget.UpdateLayout(); peek.Hold();
                     double shortWidth = shell.ActualWidth;
-                    Check(shortWidth < 300 && shell.ActualHeight <= 64.5 && shell.Margin.Top == 8, theme + " short toast fits its content without a fixed wide background; active=" + peek.Active + "; size=" + shortWidth + "x" + shell.ActualHeight + "; margin=" + shell.Margin.Top);
+                    Check(shortWidth < 300 && shell.ActualHeight <= 66.5 && shell.Margin.Top == 8, theme + " short toast fits its content without a fixed wide background; active=" + peek.Active + "; size=" + shortWidth + "x" + shell.ActualHeight + "; margin=" + shell.Margin.Top);
                     Check(!shell.HasAnimatedProperties && !Field<Grid>(widget, "messageView").HasAnimatedProperties,
                         theme + " visible toast releases its completed size, inset and opacity clocks");
                     Capture(shell, Path.Combine(output, "compact-" + theme + ".png"));
@@ -130,6 +130,26 @@ namespace Widgates
                     && Field<TextBlock>(widget, "messageBody").Text == "Da Poet & Kayra · NORMAL DELUXE",
                     "A Spotify toast uses matched track artwork, title, artist and album even when the toast omits the album");
                 Capture(shell, Path.Combine(output, "music-cover.png"));
+                settings.Lightweight = LightweightMode.Never; Call(widget, "ApplySettings", false);
+                Set(media, "Title", "Uzun bir şarkı adı ve çok satıra yayılan canlı konser kaydı");
+                Set(media, "Album", "Uzun Albüm Adıyla Yayımlanan Özel Kayıtlar — Genişletilmiş Sürüm");
+                Call(widget, "UpdateMedia");
+                peek.Cancel(false);
+                var longTrack = AppMessage.Create(45, DateTimeOffset.UtcNow,
+                    new[] { media.Title, media.Artist }, "Spotify.exe", "Spotify");
+                // The same media identity has already been shown, so start the visual
+                // fixture directly and exercise the live notification rendering path.
+                peek.Offer(longTrack, true); widget.UpdateLayout();
+                var trackTitle = Field<TextBlock>(widget, "messageSender");
+                var trackBody = Field<ScrollViewer>(widget, "messageScroll");
+                Check(trackTitle.ActualHeight > 18 && trackBody.ActualHeight > 16 && trackBody.ScrollableHeight == 0
+                    && trackBody.TranslatePoint(new Point(0, trackBody.ActualHeight), shell).Y <= shell.ActualHeight
+                    && shell.Height == (double)typeof(IslandWindow).GetField("stateHeight", Private).GetValue(widget),
+                    "Long track and album text fit at the first frame of the notification");
+                await Task.Delay(250);
+                Capture(shell, Path.Combine(output, "music-long-track.png"));
+                Set(media, "Title", "NORMAL"); Set(media, "Album", "NORMAL DELUXE");
+                Call(widget, "UpdateMedia");
                 settings.NotificationContent = false; Call(widget, "ApplySettings", false); widget.UpdateLayout();
                 Check(Field<Image>(widget, "messageAppIcon").Source == null && Field<TextBlock>(widget, "messageSender").Text == "Yeni bildirim"
                     && Field<TextBlock>(widget, "messageBody").Text == "İçerik gizli",

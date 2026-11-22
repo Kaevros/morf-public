@@ -12,6 +12,7 @@ Morf is preparing its first public preview release. The current code version is 
 - Opt-in Windows notification previews in the identity-bearing MSIX build.
 - Notifications inside the expanded hub, content-first headings and matched media artwork/album details.
 - Per-user preferences, optional startup, tray actions and configurable shortcuts.
+- In-panel countdown and stopwatch, compact indicators and local paused stopwatch restoration.
 
 ## Release priorities
 

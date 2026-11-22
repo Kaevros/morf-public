@@ -41,7 +41,7 @@ namespace Widgates
                 bool startupReady = new StartupRegistration().Initialize(settings, out startupChanged);
                 if (startupReady && startupChanged) settings.Save(WidgetSettings.DefaultPath);
                 var application = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
-                var window = new IslandWindow(settings);
+                var window = new IslandWindow(settings, StopwatchState.DefaultPath);
                 window.EnableShellServices();
                 application.SessionEnding += (_, __) => window.AllowSessionExit();
                 SingleInstanceActivation activation = null;

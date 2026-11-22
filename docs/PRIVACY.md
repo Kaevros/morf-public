@@ -7,6 +7,8 @@ Morf runs as the signed-in Windows user. It is a desktop application, not an App
 | Data | Storage and lifetime |
 | --- | --- |
 | Preferences and theme | `%LOCALAPPDATA%\Morf\widget.settings` and `theme.txt` |
+| Stopwatch elapsed time | `%LOCALAPPDATA%\Morf\stopwatch.state`, with an atomic recovery backup; restored paused, cleared by reset |
+| Countdown state | Memory only; cleared when Morf exits |
 | Shelf paths, groups and undo | Memory only; cleared when Morf exits |
 | Notification content and pending messages | Memory only; bounded and discarded after use |
 | Playback metadata and decoded artwork | In-memory working state/cache |

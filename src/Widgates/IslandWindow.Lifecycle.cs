@@ -52,7 +52,11 @@ namespace Widgates
             UpdateMedia(); UpdateShelf();
             return media.Ready ? "Görünüm ve bağlantılar yenilendi. Raf ve ayarlar korundu." : "Görünüm yenilendi; Windows medya bağlantısı kurulamadı. Raf ve ayarlar korundu.";
         }
-        internal void AllowSessionExit() { exitConfirmed = true; }
+        internal void AllowSessionExit()
+        {
+            SaveStopwatch(ClockTools.GetTickCount64());
+            exitConfirmed = true;
+        }
         private void ApplyPlayerWidth(double width)
         {
             bool narrow = width < 320;

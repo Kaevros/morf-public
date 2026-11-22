@@ -151,8 +151,8 @@ namespace Widgates
                     var applicationMenu = Field<ContextMenu>(widget, "applicationMenu");
                     Check(applicationMenu.Items.Cast<MenuItem>().All(item => item.Header is Grid && !string.IsNullOrEmpty(item.ToolTip as string))
                         && !Descendants(applicationMenu).OfType<TextBlock>().Any(), preference + " application hub uses named icon actions without text tiles or nested cards");
-                    Check(applicationMenu.IsOpen && applicationMenu.Items.Count == 3 && Field<Border>(widget, "shell").Height == playerHeight,
-                        preference + " media launcher opens three explicit choices without resizing the player or opening an application");
+                    Check(applicationMenu.IsOpen && applicationMenu.Items.Count == 4 && Field<Border>(widget, "shell").Height == playerHeight,
+                        preference + " launcher opens three apps and the internal clock controls without resizing the player");
                     Capture(Field<Border>(widget, "shell"), Path.Combine(output, "launcher-" + preference + ".png"));
                     Capture(applicationMenu, Path.Combine(output, "launcher-menu-" + preference + ".png"));
                     launcher.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));

@@ -22,6 +22,10 @@ namespace Widgates
 {
     internal sealed partial class IslandWindow
     {
+        private static readonly ControlTemplate NormalButtonTemplate = CreateButtonTemplate(false, false);
+        private static readonly ControlTemplate SubtleButtonTemplate = CreateButtonTemplate(false, true);
+        private static readonly ControlTemplate AccentButtonTemplate = CreateButtonTemplate(true, false);
+
         private static TextBlock Label(string text, double size, Brush color, bool bold = false)
         {
             return new TextBlock
@@ -108,11 +112,21 @@ namespace Widgates
             if (!double.IsNaN(width)) button.Width = width;
             if (!double.IsNaN(height)) button.Height = height;
 
+            button.Template = accent ? AccentButtonTemplate : subtle ? SubtleButtonTemplate : NormalButtonTemplate;
+            ToolTipService.SetShowOnDisabled(button, true);
+            PopupTheme.DelayTooltip(button);
+            AutomationProperties.SetName(button, accessibleName);
+            button.Click += (_, __) => action();
+            return button;
+        }
+
+        private static ControlTemplate CreateButtonTemplate(bool accent, bool subtle)
+        {
             Brush normalBg = accent ? ThemePalette.PlaySurface : (subtle ? Brushes.Transparent : ThemePalette.Button);
             Brush hoverBg = accent ? ThemePalette.AccentHover : ThemePalette.Hover;
             Brush pressedBg = accent ? ThemePalette.AccentHover : ThemePalette.Pressed;
             Brush normalBorder = Brushes.Transparent;
-            Brush hoverBorder = subtle || accent ? Brushes.Transparent : StrokeHover;
+            Brush hoverBorder = subtle || accent ? Brushes.Transparent : ThemePalette.StrokeHover;
 
             var template = new ControlTemplate(typeof(Button));
             var borderFactory = new FrameworkElementFactory(typeof(Border));
@@ -136,7 +150,7 @@ namespace Widgates
             template.Triggers.Add(hoverTrigger);
 
             var focusTrigger = new Trigger { Property = UIElement.IsKeyboardFocusWithinProperty, Value = true };
-            focusTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, Accent, "BtnBorder"));
+            focusTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, ThemePalette.Accent, "BtnBorder"));
             template.Triggers.Add(focusTrigger);
 
             var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
@@ -147,12 +161,7 @@ namespace Widgates
             disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.4));
             template.Triggers.Add(disabledTrigger);
 
-            button.Template = template;
-            ToolTipService.SetShowOnDisabled(button, true);
-            PopupTheme.DelayTooltip(button);
-            AutomationProperties.SetName(button, accessibleName);
-            button.Click += (_, __) => action();
-            return button;
+            return template;
         }
 
     }

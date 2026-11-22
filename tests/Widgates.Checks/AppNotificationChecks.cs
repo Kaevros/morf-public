@@ -178,14 +178,15 @@ namespace Widgates
                 Check(Field<DispatcherTimer>(widget, "progress").IsEnabled == expectedProgress && !Field<MarqueeText>(widget, "compactMarquee").Running,
                     "An inline message keeps the visible player's progress clock while the compact marquee stays stopped");
                 messages.Hold();
-                messages.Current.Body = string.Join(" ", Enumerable.Repeat("Uzun mesaj önizlemesi", 20));
+                messages.Current.Body = string.Join(" ", Enumerable.Repeat("Uzun mesaj önizlemesi", 12));
                 Call(widget, "UpdateState", false); widget.UpdateLayout();
                 var body = Field<TextBlock>(widget, "messageBody");
                 var sender = Field<TextBlock>(widget, "messageSender");
+                var bodyScroll = Field<ScrollViewer>(widget, "messageScroll");
                 Point bodyTop = body.TranslatePoint(new Point(), shell);
                 Check(body.TextWrapping == TextWrapping.Wrap && body.TextTrimming == TextTrimming.None
-                    && bodyTop.Y >= sender.TranslatePoint(new Point(0, sender.ActualHeight), shell).Y && Field<ScrollViewer>(widget, "messageScroll").ActualHeight <= 72.5,
-                    "A long inline notification wraps in a bounded scroll area without replacing the player");
+                    && ReferenceEquals(bodyScroll.Content, body) && bodyTop.Y >= sender.TranslatePoint(new Point(0, sender.ActualHeight), shell).Y
+                    && bodyScroll.ScrollableHeight == 0, "A medium inline notification expands below the fixed heading without clipping or scrolling");
                 Capture(shell, Path.Combine(output, "notification-top.png"));
                 Capture(widget, Path.Combine(output, "notification-floating-top.png"));
                 var originalTheme = ThemePalette.Preference;
@@ -243,6 +244,33 @@ namespace Widgates
                     && Field<Grid>(widget, "messageView").Visibility == Visibility.Visible,
                     "The content-sized notification stays centered with a bounded width even when it equals the compact width");
                 Capture(widget, Path.Combine(output, "notification-expansion.png"));
+                settings.NotificationContent = true;
+                messages.Hold();
+                messages.Current.Sender = "Ekran görüntüsü panoya kopyalandı";
+                messages.Current.Body = "Ekran görüntüleri klasörüne otomatik olarak kaydedildi.";
+                Call(widget, "UpdateState", false); widget.UpdateLayout();
+                var outline = shell.BorderThickness;
+                messageButton.Focus(); widget.UpdateLayout();
+                Check(shell.BorderThickness == outline && bodyScroll.ScrollableHeight == 0 && bodyScroll.VerticalOffset == 0
+                    && body.TranslatePoint(new Point(0, body.ActualHeight), shell).Y <= shell.ActualHeight,
+                    "Focusing a screenshot notification keeps the complete title and body visible with no scroll");
+                Capture(widget, Path.Combine(output, "notification-short-focused.png"));
+                messages.Current.Sender = "İki satıra veya daha fazlasına uzayabilecek bir bildirim başlığı ile tam görünen son satır";
+                Call(widget, "UpdateState", true); widget.UpdateLayout();
+                Check(sender.ActualHeight > 18 && bodyScroll.ScrollableHeight == 0
+                    && body.TranslatePoint(new Point(0, body.ActualHeight), shell).Y + 2 <= shell.ActualHeight
+                    && bodyScroll.TranslatePoint(new Point(), shell).Y >= sender.TranslatePoint(new Point(0, sender.ActualHeight), shell).Y,
+                    "A wrapping message title and its body fit immediately with space below the last line");
+                Capture(widget, Path.Combine(output, "notification-wrapped-title.png"));
+                double shortHeight = shell.ActualHeight;
+                messages.Current.Body = string.Join(" ", Enumerable.Repeat("Genişletilmiş bildirim gövdesi", 200));
+                Call(widget, "UpdateState", false); widget.UpdateLayout();
+                double titleTop = sender.TranslatePoint(new Point(), shell).Y;
+                bodyScroll.ScrollToBottom(); widget.UpdateLayout();
+                Check(shell.ActualHeight > shortHeight && shell.ActualHeight <= 320.5 && bodyScroll.VerticalOffset > 0
+                    && Math.Abs(sender.TranslatePoint(new Point(), shell).Y - titleTop) < 0.5,
+                    "An oversized notification stops expanding at its height limit and scrolls only below the fixed title");
+                Capture(widget, Path.Combine(output, "notification-long-fixed-title.png"));
                 messages.Cancel(); await Task.Delay(280);
                 Call(widget, "OpenSettings"); await Task.Delay(100);
                 var dialog = Field<SettingsWindow>(widget, "settingsWindow"); dialog.SelectPage(6); await Task.Delay(60);

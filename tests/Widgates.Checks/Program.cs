@@ -367,6 +367,9 @@ namespace Widgates
                 var image = PreviewImage.Decode(stream, 192);
                 Check(image != null && image.IsFrozen && Math.Max(image.PixelWidth, image.PixelHeight) <= 192,
                     "Media and shelf preview decoder bounds the output dimensions");
+                var streamBound = image as BitmapImage;
+                Check(streamBound == null || streamBound.StreamSource == null,
+                    "A cached preview does not retain its encoded source stream");
             }
             using (var oversized = new MemoryStream(new byte[PreviewImage.MaximumBytes + 1]))
                 Check(PreviewImage.Decode(oversized, 96) == null, "Oversized image streams are rejected");

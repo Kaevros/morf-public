@@ -32,8 +32,16 @@ namespace Widgates
                 else bitmap.DecodePixelHeight = Math.Min(maximumEdge, frame.PixelHeight);
                 bitmap.StreamSource = stream;
                 bitmap.EndInit();
-                bitmap.Freeze();
-                return bitmap;
+
+                // A BitmapImage retains its StreamSource even after decoding. Keep only
+                // the bounded preview pixels so cached covers can release their encoded bytes.
+                int stride = (bitmap.PixelWidth * bitmap.Format.BitsPerPixel + 7) / 8;
+                var pixels = new byte[stride * bitmap.PixelHeight];
+                bitmap.CopyPixels(pixels, stride, 0);
+                var preview = BitmapSource.Create(bitmap.PixelWidth, bitmap.PixelHeight, bitmap.DpiX, bitmap.DpiY,
+                    bitmap.Format, bitmap.Palette, pixels, stride);
+                preview.Freeze();
+                return preview;
             }
             catch (IOException) { return null; }
             catch (NotSupportedException) { return null; }

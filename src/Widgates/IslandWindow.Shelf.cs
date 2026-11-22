@@ -24,7 +24,7 @@ namespace Widgates
             foreach (var picker in new[] { shelfFilter, shelfGroup })
             {
                 picker.DropDownOpened += (_, __) => collapse.Stop();
-                picker.DropDownClosed += (_, __) => { if (!pinned && !shell.IsMouseOver) collapse.Start(); };
+                picker.DropDownClosed += (_, __) => { if (!pinned && !IsPointerOverIsland) collapse.Start(); };
             }
             filters.Children.Add(shelfFilter); Grid.SetColumn(shelfGroup, 1); filters.Children.Add(shelfGroup); shelfSection.Children.Add(filters);
             var tools = new WrapPanel();
