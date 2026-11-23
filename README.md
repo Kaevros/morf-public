@@ -112,7 +112,7 @@ When notification previews are enabled, the packaged build can temporarily manag
 - The portable build cannot receive live Windows notifications. Notification previews do not provide quick replies or call controls.
 - Transparent surfaces do not provide Apple-style background refraction or a guarantee of native blur.
 - Multi-output synchronization, physical multi-monitor/DPI transitions and broader Windows compatibility need further device testing.
-- Picture-in-picture is not included.
+- Opt-in browser picture-in-picture is a development preview requiring a companion extension. See [scope and actual verification](docs/PICTURE-IN-PICTURE.md) and [setup](browser-extension/README.md); store distribution, broader browser/device support, desktop pinning and power validation remain open.
 
 ## Development
 

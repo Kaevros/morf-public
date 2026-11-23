@@ -175,7 +175,7 @@ namespace Widgates
             collapse.Tick += (_, __) =>
             {
                 collapse.Stop();
-                if (!IsPointerOverIsland && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
+                if (!IsPointerOverIsland && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver)
                     SetExpanded(false);
             };
 
@@ -234,6 +234,14 @@ namespace Widgates
             };
             compactCoverImage = new Image { Stretch = Stretch.UniformToFill };
             compactCoverBorder.Child = compactCoverImage;
+            compactCoverBorder.MouseLeftButtonDown += async (s, e) =>
+            {
+                if (CanOpenPictureInPicture)
+                {
+                    e.Handled = true;
+                    await OpenPictureInPictureAsync();
+                }
+            };
             compactMarkContainer.Children.Add(compactCoverBorder);
 
             Grid.SetColumn(compactMarkContainer, 0);
@@ -397,6 +405,7 @@ namespace Widgates
             Grid.SetColumn(mediaDetails, 1);
             mediaCardGrid.Children.Add(mediaDetails);
             mediaApplicationButton = CreateCustomButton(mediaCardGrid, async () => {
+                if (CanOpenPictureInPicture && (!mediaApplicationButton.IsMouseOver || expandedCoverBorder.IsMouseOver)) { await OpenPictureInPictureAsync(); return; }
                 MediaApplication application;
                 if (MediaAppLauncher.TryIdentify(media.Active == null ? "" : media.Active.SourceAppUserModelId, out application)) await OpenMediaApplicationAsync(application);
             }, "Müzik uygulamasını aç", "Çalan müzik uygulamasını aç", double.NaN, double.NaN, subtle: true);
@@ -707,7 +716,8 @@ namespace Widgates
                 peek.Release();
                 messages.Release();
                 hover.Cancel();
-                if (expanded && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver && !SettingsOpen)
+                if (Mouse.LeftButton == MouseButtonState.Released) CancelTrackSwipe();
+                if (expanded && !pinned && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !trackSwipe.Active && !messages.Active && !isDragOver)
                     collapse.Start();
             };
 
@@ -715,7 +725,7 @@ namespace Widgates
             {
                 if (closed) return;
                 CancelTrackSwipe();
-                if (pinned && !panelState.Persistent && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen && !SettingsOpen)
+                if (pinned && !panelState.Persistent && !draggingOut && !sessions.IsDropDownOpen && !applicationMenu.IsOpen)
                     ClosePanel();
             };
             PreviewKeyDown += (_, e) =>
@@ -755,6 +765,8 @@ namespace Widgates
                 if (shellServices && !exitConfirmed) { e.Cancel = true; Dispatcher.BeginInvoke(new Action(RequestExit)); return; }
                 SaveStopwatch(ClockTools.GetTickCount64());
                 closed = true;
+                if (pictureInPicture != null) pictureInPicture.Dispose();
+                pipPlacement.Track(null);
                 if (mixerWindow != null) mixerWindow.Close(); audioMirror.Dispose();
                 if (bannerRouting != null) bannerRouting.Dispose();
                 appNotifications.Dispose(); messages.Dispose();
@@ -861,7 +873,6 @@ namespace Widgates
 
         private void OpenPinned()
         {
-            if (SettingsOpen) { settingsWindow.Activate(); return; }
             if (Suppressed) return;
             hover.Cancel();
             pinned = true;
@@ -901,8 +912,8 @@ namespace Widgates
                 Hide();
                 return;
             }
-            if (panelState.Persistent && !SettingsOpen && !Suppressed) { pinned = true; SetExpanded(true); }
-            if (settings.HideInFullscreen && !placement.RuleShown && !pinned && !draggingOut && !isDragOver && !SettingsOpen && placement.Fullscreen)
+            if (panelState.Persistent && !Suppressed) { pinned = true; SetExpanded(true); }
+            if (settings.HideInFullscreen && !placement.RuleShown && !pinned && !draggingOut && !isDragOver && placement.Fullscreen)
             {
                 peek.Cancel(false); UpdateCompactContent(); UpdateState(false);
                 SetExpanded(false);
@@ -1257,6 +1268,7 @@ namespace Widgates
             bool knownApplication = MediaAppLauncher.TryIdentify(media.Active == null ? "" : media.Active.SourceAppUserModelId, out identified);
             mediaApplicationButton.IsHitTestVisible = true;
             mediaApplicationButton.Focusable = knownApplication;
+            UpdatePictureInPictureAction();
             mediaTitle.Text = hasTrack ? media.Title : (isPlaying ? "Oynatılıyor" : "Medya bekleniyor");
             string detail = string.IsNullOrWhiteSpace(media.Artist) ? source : media.Artist;
             mediaArtist.Text = string.IsNullOrWhiteSpace(detail) ? "Bir müzik uygulamasında oynatmayı başlatın" : detail;
@@ -1760,6 +1772,8 @@ namespace Widgates
                 Diagnostics = Diagnostics, CopyDiagnostics = CopyDiagnostics, StartSleep = minutes => sleep.Start(minutes), CancelSleep = () => sleep.Cancel(),
                 SleepMinutes = () => sleep.SelectedMinutes, SleepActive = () => sleep.Active,
                 MediaStatus = () => string.IsNullOrWhiteSpace(media.Notice) ? media.ReturnStatus : media.Notice + "\n" + media.ReturnStatus, ResumePrevious = media.ResumePreviousAsync,
+                PictureInPictureStatus = PictureInPictureStatus, SetupPictureInPicture = SetupPictureInPicture,
+                PictureInPictureConnected = () => pipPreviouslyConnected,
                 NotificationStatus = NotificationRuntimeStatus, NotificationAvailable = () => AppNotificationListener.HasIdentity && !appNotifications.Connecting,
                 ConnectNotifications = () => ConnectNotificationsAsync(true), RefreshNotifications = () => ConnectNotificationsAsync(false),
                 PreviewNotification = PreviewNotification, OpenNotificationSettings = OpenWindowsNotificationSettings,
@@ -1775,16 +1789,13 @@ namespace Widgates
                 settingsWindow = null;
                 if (!closed)
                 {
-                    panelState.RestoreAfterSettings(!Suppressed && (placement == null || placement.OnCurrentDesktop));
+                    panelState.EndSettings(!Suppressed && (placement == null || placement.OnCurrentDesktop));
                     UpdateState(false); UpdateVisibility();
                     if (!pinned) collapse.Start(); UpdateLiveVisuals();
                     FlushPendingNotification();
                 }
             };
-            panelState.SuspendForSettings();
-            UpdateState(false);
-            pinned = false;
-            SetExpanded(false);
+            panelState.BeginSettings();
             UpdateLiveVisuals();
             window.Show();
         }
@@ -1879,6 +1890,7 @@ namespace Widgates
         private void ApplySettings(bool save)
         {
             if (closed) { if (save) SaveSettings(); return; }
+            ConfigurePictureInPicture();
             media.AutoPauseOthers = settings.AutoPauseOthers;
             media.ResumeInterrupted = settings.ResumeInterrupted;
             media.ConfigureRules(settings.MediaRules);
@@ -1945,7 +1957,7 @@ namespace Widgates
             UpdateNotificationRouting();
             if (compactMarquee == null || timelinePanel == null) return;
             if (messages.Active && !MessageAllowed) { messages.Cancel(false); UpdateState(false); return; }
-            bool visible = !closed && !SettingsOpen && IsVisible && (placement == null || placement.OnCurrentDesktop) && !Suppressed && (power == null || power.State.RenderAllowed);
+            bool visible = !closed && IsVisible && (placement == null || placement.OnCurrentDesktop) && !Suppressed && (power == null || power.State.RenderAllowed);
             if (settingsWindow != null && (!SystemParameters.ClientAreaAnimation || LightMode || (power != null && !power.State.RenderAllowed)))
                 settingsWindow.FinishApplicationsMotion();
             if (!visible || messages.Active || LightMode || !SystemParameters.ClientAreaAnimation)
@@ -2030,7 +2042,7 @@ namespace Widgates
             if (clockPanel.IsMouseOver) return;
             if (!settings.ScrollVolumeOnWholeIsland && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
             if (panelViewport.ScrollableHeight > 0 && panelViewport.IsMouseOver && !volumeButton.IsMouseOver && !volumePanel.IsMouseOver) return;
-            if (!settings.ScrollVolume || SettingsOpen || sessions.IsDropDownOpen || files.IsMouseOver || sessions.IsMouseOver || seekSlider.IsMouseOver || e.Delta == 0) return;
+            if (!settings.ScrollVolume || sessions.IsDropDownOpen || files.IsMouseOver || sessions.IsMouseOver || seekSlider.IsMouseOver || e.Delta == 0) return;
             e.Handled = true;
             SynchronizeVolumeTarget();
             if (pendingVolumeTarget != CurrentVolumeTarget) pendingVolumeDelta = 0;

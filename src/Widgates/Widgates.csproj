@@ -12,6 +12,7 @@
     <Version>0.3.3-preview</Version>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../browser-extension/*" Exclude="../../browser-extension/README.md" LogicalName="Widgates.PiP.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/Brand/*.png" LogicalName="Widgates.Brand.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

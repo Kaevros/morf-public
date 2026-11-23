@@ -13,6 +13,7 @@ namespace Widgates
         internal void EnableShellServices()
         {
             shellServices = true;
+            ConfigurePictureInPicture();
             bannerRouting = new NotificationBannerRouting(Dispatcher);
             bannerRouting.ConfigureRules(settings.NotificationRules);
             bannerRouting.Changed += () => { if (!closed && settingsWindow != null) settingsWindow.RefreshRuntimeStatus(); };
@@ -29,7 +30,6 @@ namespace Widgates
         {
             if (closed) return;
             temporaryHide.Cancel();
-            if (SettingsOpen) { settingsWindow.Activate(); return; }
             if (Suppressed) return;
             OpenPinned();
         }

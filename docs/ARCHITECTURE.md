@@ -6,7 +6,7 @@ Morf is a native Windows desktop application written in C#. The SDK and inbox bu
 
 `Program` checks platform support, acquires the single-instance entry point and creates `IslandWindow`. A second launch signals the current user's existing instance. The application runs at standard user privilege.
 
-`PanelState` owns compact, expanded and persistent state. `IslandWindow` is split by responsibility: controls, lifecycle, clock, media interaction, notifications, shelf and volume. Settings and the audio mixer are separate windows created on demand. Opening settings suspends hover opening and restores the prior state on close.
+`PanelState` owns compact, expanded and persistent state. `IslandWindow` is split by responsibility: controls, lifecycle, clock, media interaction, notifications, shelf and volume. Settings and the audio mixer are separate windows created on demand. Settings leave capsule hover, transport and live visuals usable; closing settings preserves the user's current panel state.
 
 Desktop placement follows Windows work areas, taskbar position, monitor changes and DPI events. Game/application rules can suppress the panel. System events trigger deferred layout recovery instead of recurring input polling.
 
@@ -17,6 +17,8 @@ Desktop placement follows Windows work areas, taskbar position, monitor changes 
 `LatestMediaRequest`, version checks and operation deadlines prevent stale asynchronous results from overwriting a newer selection. `PlaybackPriority` and `PlaybackReturn` manage optional source handoff. Return is restricted to a source Morf previously paused, with fresh identity and playback-state checks.
 
 The local progress display runs only while needed by a visible player. It does not query Windows on every tick. Title motion and short transitions stop when hidden, paused or restricted by reduced-motion/power preferences.
+
+Optional [browser PiP](PICTURE-IN-PICTURE.md) uses a separate Manifest V3 companion and browser-owned playback. An opt-in current-user pipe exchanges bounded, validated media messages with an on-demand native host; there is no capture, extra decoder or tab scanner. Only explicitly linked video metadata can enable the expanded artwork action. Disabling disposes IPC; source/browser disconnects release PiP resources. Browser user-activation requirements are preserved.
 
 ## Audio
 

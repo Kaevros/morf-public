@@ -13,6 +13,7 @@ Morf is preparing its first public preview release. The current code version is 
 - Notifications inside the expanded hub, content-first headings and matched media artwork/album details.
 - Per-user preferences, optional startup, tray actions and configurable shortcuts.
 - In-panel countdown and stopwatch, compact indicators and local paused stopwatch restoration.
+- Opt-in browser PiP development preview and matched expanded-artwork action; see [actual scope and verification](PICTURE-IN-PICTURE.md).
 
 ## Release priorities
 
@@ -26,6 +27,6 @@ Morf is preparing its first public preview release. The current code version is 
 
 - Broader Windows/device compatibility, based on reported results.
 - Interface localization.
-- Picture-in-picture feasibility remains deferred; it is not part of the first release.
+- PiP store distribution, wider browser/DRM coverage, desktop pinning and power/device validation; the local development preview is not release-ready.
 
 Build instructions are in [BUILDING.md](BUILDING.md), implementation boundaries in [ARCHITECTURE.md](ARCHITECTURE.md), and data/permission behavior in [PRIVACY.md](PRIVACY.md).

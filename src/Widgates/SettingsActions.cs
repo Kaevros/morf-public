@@ -14,6 +14,9 @@ namespace Widgates
         internal Func<int> SleepMinutes;
         internal Func<bool> SleepActive;
         internal Func<string> MediaStatus;
+        internal Func<string> PictureInPictureStatus;
+        internal Func<bool> PictureInPictureConnected;
+        internal Action SetupPictureInPicture;
         internal Func<System.Threading.Tasks.Task> ResumePrevious;
         internal Func<string[], bool> ConfigureHotkeys;
         internal Func<bool> Reset;

@@ -14,7 +14,9 @@ $references = @(
     (Join-Path $framework 'WPF/PresentationCore.dll')
     (Join-Path $framework 'WPF/PresentationFramework.dll')
     (Join-Path $framework 'WPF/UIAutomationTypes.dll')
+    (Join-Path $framework 'WPF/UIAutomationClient.dll')
     (Join-Path $framework 'System.Xaml.dll')
+    (Join-Path $framework 'System.Runtime.Serialization.dll')
     (Join-Path $metadata 'Windows.Foundation.winmd')
     (Join-Path $metadata 'Windows.Media.winmd')
     (Join-Path $metadata 'Windows.Storage.winmd')
@@ -31,6 +33,8 @@ $flags = @('/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', '/utf8
 $brandResources = Get-ChildItem -LiteralPath (Join-Path $project 'Assets/Brand') -Filter '*.png' |
     ForEach-Object { "/resource:$($_.FullName),Widgates.Brand.$($_.Name)" }
 $flags += $brandResources
+$flags += Get-ChildItem -LiteralPath (Join-Path $repo 'browser-extension') -File | Where-Object { $_.Extension -ne '.md' } |
+    ForEach-Object { "/resource:$($_.FullName),Widgates.PiP.$($_.Name)" }
 $referenceFlags = $references | ForEach-Object { "/reference:$_" }
 $sources = Get-ChildItem -LiteralPath $project -Filter '*.cs' | Select-Object -ExpandProperty FullName
 & (Join-Path $framework 'csc.exe') @flags @referenceFlags @sources

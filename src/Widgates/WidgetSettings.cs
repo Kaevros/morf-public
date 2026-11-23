@@ -25,6 +25,9 @@ namespace Widgates
         internal bool AutoPauseOthers { get; set; }
         internal bool ScrollVolume { get; set; }
         internal bool PlayerVolume { get; set; }
+        internal bool PictureInPicture { get; set; }
+        internal bool PictureInPictureAdvanced { get; set; }
+        internal int PictureInPictureSeekSeconds { get; set; }
         internal bool HideInGames { get; set; }
         internal bool StartWithWindows { get; set; }
         internal bool StartupConfigured { get; set; }
@@ -83,6 +86,7 @@ namespace Widgates
             NotificationRules = MediaRules = "";
             MonitorDevice = AppRules = PlayHotkey = PreviousHotkey = NextHotkey = "";
             PanelHotkey = "Ctrl+Alt+M";
+            PictureInPictureSeekSeconds = 10;
         }
 
         internal static WidgetSettings Load(string path)
@@ -118,6 +122,9 @@ namespace Widgates
                         else if (key == "AutoPauseOthers" && bool.TryParse(value, out enabled)) settings.AutoPauseOthers = enabled;
                         else if (key == "ScrollVolume" && bool.TryParse(value, out enabled)) settings.ScrollVolume = enabled;
                         else if (key == "PlayerVolume" && bool.TryParse(value, out enabled)) settings.PlayerVolume = enabled;
+                        else if (key == "PictureInPicture" && bool.TryParse(value, out enabled)) settings.PictureInPicture = enabled;
+                        else if (key == "PictureInPictureAdvanced" && bool.TryParse(value, out enabled)) settings.PictureInPictureAdvanced = enabled;
+                        else if (key == "PictureInPictureSeekSeconds" && int.TryParse(value, out integer)) settings.PictureInPictureSeekSeconds = PictureInPictureProtocol.SeekSeconds(integer);
                         else if (key == "HideInGames" && bool.TryParse(value, out enabled)) { settings.HideInGames = enabled; hasGamePreference = true; }
                         else if (key == "StartWithWindows" && bool.TryParse(value, out enabled)) settings.StartWithWindows = enabled;
                         else if (key == "StartupConfigured" && bool.TryParse(value, out enabled)) settings.StartupConfigured = enabled;
@@ -177,6 +184,8 @@ namespace Widgates
                     "Style=" + Style, "GlassStrength=" + ClampStrength(GlassStrength).ToString("0.00", CultureInfo.InvariantCulture),
                     "FollowDesktops=" + FollowDesktops, "AutoPauseOthers=" + AutoPauseOthers,
                     "ScrollVolume=" + ScrollVolume, "PlayerVolume=" + PlayerVolume, "HideInGames=" + HideInGames,
+                    "PictureInPicture=" + PictureInPicture, "PictureInPictureAdvanced=" + PictureInPictureAdvanced,
+                    "PictureInPictureSeekSeconds=" + PictureInPictureProtocol.SeekSeconds(PictureInPictureSeekSeconds),
                     "StartWithWindows=" + StartWithWindows, "StartupConfigured=" + StartupConfigured,
                     "EdgeOnly=" + EdgeOnly, "FloatingIsland=" + FloatingIsland, "ScrollTitles=" + ScrollTitles, "ShowTimeline=" + ShowTimeline,
                     "PeekTrackChanges=" + PeekTrackChanges, "ResumeInterrupted=" + ResumeInterrupted,

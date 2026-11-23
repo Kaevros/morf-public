@@ -57,6 +57,12 @@ try {
   <virtualization:RegistryWriteVirtualization><virtualization:ExcludedKeys>
    <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings</virtualization:ExcludedKey>
    <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Morf\NotificationRouting</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Microsoft\Edge\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Chromium\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Vivaldi\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
+   <virtualization:ExcludedKey>HKEY_CURRENT_USER\Software\Opera Software\NativeMessagingHosts\com.morf.pip</virtualization:ExcludedKey>
   </virtualization:ExcludedKeys></virtualization:RegistryWriteVirtualization>
  </Properties>
  <Resources><Resource Language="tr-tr" /><Resource Language="en-us" /></Resources>

@@ -26,22 +26,22 @@ namespace Widgates
                     "Behavior page switches update their own preferences once per click");
                 dialog.SelectPage(2);
                 foreach (var choice in Toggles(dialog)) Click(choice);
-                Check(!model.AutoPauseOthers && !model.ResumeInterrupted && !model.ShowTimeline && !model.ScrollVolume && commits == 9,
+                Check(!model.AutoPauseOthers && !model.ResumeInterrupted && !model.ShowTimeline && !model.ScrollVolume && model.PictureInPicture && commits == 10,
                     "Media and sound switches preserve the playback, timeline and volume bindings");
                 dialog.SelectPage(3);
                 ExpandAdvanced(dialog);
                 choices = Toggles(dialog);
                 foreach (var choice in choices.Where(choice => AutomationProperties.GetName(choice) != "Windows ile başlat")) Click(choice);
-                Check(!model.ShowTrayIcon && !model.HideInGames && model.HideInFullscreen && !model.FollowDesktops && commits == 13,
+                Check(!model.ShowTrayIcon && !model.HideInGames && model.HideInFullscreen && !model.FollowDesktops && commits == 14,
                     "System page switches preserve game, fullscreen and desktop preferences");
                 var startup = choices.Single(choice => AutomationProperties.GetName(choice) == "Windows ile başlat");
                 Click(startup);
-                Check(startup.IsChecked == false && !model.StartWithWindows && commits == 13,
+                Check(startup.IsChecked == false && !model.StartWithWindows && commits == 14,
                     "Denied startup changes restore the switch without saving an incorrect preference");
                 model.StartWithWindows = true; dialog.SelectPage(3);
                 startup = Toggles(dialog).Single(choice => AutomationProperties.GetName(choice) == "Windows ile başlat");
                 Click(startup);
-                Check(startup.IsChecked == true && model.StartWithWindows && commits == 13,
+                Check(startup.IsChecked == true && model.StartWithWindows && commits == 14,
                     "Denied startup removal preserves the previously enabled switch without saving");
             }
             finally { dialog.Close(); }

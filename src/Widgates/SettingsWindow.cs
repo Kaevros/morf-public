@@ -36,16 +36,16 @@ namespace Widgates
         private bool refreshingApplication;
         private bool syncingNavigation;
         internal int SelectedPage { get; private set; }
-        private static readonly string[] PageNames = { "Görünüm", "Davranış", "Medya ve ses", "Sistem", "Kısayollar", "Hakkında ve bakım", "Uygulamalar" };
+        private static readonly string[] PageNames = { "Görünüm", "Kapsül", "Medya ve ses", "Windows", "Kısayollar", "Hakkında", "Bildirimler" };
         private static readonly int[] PageOrder = { 0, 1, 2, 6, 3, 4, 5 };
         private static readonly string[] PageDescriptions = {
             "Morf'un temasını ve yüzeyini kişiselleştirin.",
             "Ekranda ne kadar yer kaplayacağını ve nasıl açılacağını seçin.",
             "Oynatma önceliğini, süreyi ve ses denetimini yönetin.",
             "Oyunlar, ekranlar, güç kullanımı ve Windows başlangıcını yönetin.",
-            "Kişisel tuşlarınızı sürekli klavye taraması olmadan kullanın.",
+            "Bir alana tıklayın ve kullanmak istediğiniz tuşlara basın.",
             "Sürüm, yerel tanılama ve varsayılan ayarlar.",
-            "Uygulama bağlantılarını ve süreli bildirimleri yönetin." };
+            "Bildirimlerin görünümünü ve uygulama tercihlerini seçin." };
 
         internal SettingsWindow(WidgetSettings settings, Action<bool> apply, Func<ThemePreference, bool> selectTheme,
             Func<bool, bool> configureStartup, Action exit)
@@ -94,7 +94,7 @@ namespace Widgates
             shortcuts = Text(settings.PanelHotkey + " · Aç / kapat\nEsc · Paneli kapat", 10);
             shortcuts.Foreground = ThemePalette.Muted; shortcuts.Margin = new Thickness(0, 0, 0, 14);
             bottom.Children.Add(shortcuts);
-            refreshButton = Button("Uygulamayı yinele", async () => await RefreshApplicationAsync());
+            refreshButton = Button("Yenile", async () => await RefreshApplicationAsync());
             refreshButton.ToolTip = "Görünümü ve bağlantıları yenile; raf ve ayarlar korunur.";
             bottom.Children.Add(refreshButton);
             var exitButton = Button("Morf'tan Çık", RequestExitConfirmation, true);
@@ -124,7 +124,7 @@ namespace Widgates
             notice = Text("", 11); notice.Foreground = ThemePalette.Muted; notice.Visibility = Visibility.Collapsed;
             notice.Margin = new Thickness(0, 12, 0, 0);
             var footer = new StackPanel(); footer.Children.Add(notice);
-            compactRefresh = Button("Uygulamayı yinele", async () => await RefreshApplicationAsync()); compactRefresh.Visibility = Visibility.Collapsed; footer.Children.Add(compactRefresh);
+            compactRefresh = Button("Yenile", async () => await RefreshApplicationAsync()); compactRefresh.Visibility = Visibility.Collapsed; footer.Children.Add(compactRefresh);
             compactExit = Button("Morf'tan Çık", RequestExitConfirmation, true); compactExit.Visibility = Visibility.Collapsed; compactExit.Margin = new Thickness(0, 8, 0, 0); footer.Children.Add(compactExit);
             Grid.SetRow(footer, 2); body.Children.Add(footer);
             PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { e.Handled = true; if (exitOverlay != null) DismissExitConfirmation(); else if (resetConfirmation != null) CancelReset(); else Close(); } };
@@ -173,7 +173,7 @@ namespace Widgates
                     if (liquidCard != null) liquidCard.Visibility = liquid ? Visibility.Visible : Visibility.Collapsed;
                     if (glassCard != null) glassCard.Visibility = settings.Style == SurfaceStyle.SoftGlass ? Visibility.Visible : Visibility.Collapsed;
                 };
-                var surface = Labels("Yüzey", "Düz, saydam veya ışık kenarlı cam yüzey. Masaüstü bulanıklığı uygulanmaz.");
+                var surface = Labels("Yüzey", "Kapsülün cam görünümünü seçin.");
                 surface.Children.Add(SettingsChoices.Create("Yüzey", new[] { "Düz", "Yumuşak cam", "Liquid Glass" }, (int)settings.Style,
                     value => { settings.Style = (SurfaceStyle)value; updateSurfaceControls(); apply(true); }, "surface")); Card(surface);
                 Range("Yüzey opaklığı", "Metinler ve düğmeler net kalır.", 45, 100, settings.Opacity * 100,
@@ -191,10 +191,10 @@ namespace Widgates
             {
                 Choice("Konum", "Otomatik konum, yatay görev çubuğunun karşı kenarıdır.", new[] { "Otomatik", "Üst kenar", "Alt kenar" }, (int)settings.Dock,
                     value => { settings.Dock = (DockPreference)value; apply(true); });
-                var mode = Labels("Kapalı görünüm", "Kapsül, kenar çizgisi veya otomatik gizleme seçin. Dinamik ada ekran kenarından ayrık, yuvarlak bir kapsüldür.");
+                var mode = Labels("Kapalı görünüm", "Dinamik ada ekran kenarından ayrı durur.");
                 mode.Children.Add(SettingsChoices.Create("Kapalı görünüm", new[] { "Kapsül", "İnce çizgi", "Otomatik gizle", "Dinamik ada" }, (int)settings.DisplayMode,
                     value => { settings.DisplayMode = (DisplayMode)value; apply(true); }, "display")); Card(mode);
-                Toggle("Fare üzerine gelince aç", "Kapsülü tıklamadan açın. Çizgi modu her zaman hover ile açılır.", settings.OpenOnHover, value => settings.OpenOnHover = value);
+                Toggle("Fare üzerine gelince aç", "İnce çizgi görünümünde her zaman etkindir.", settings.OpenOnHover, value => settings.OpenOnHover = value);
                 Toggle("Gizliyken parça değişimini göster", "Yeni parça kısa süre görünür. Oyun, kilit ve bildirim tercihleri korunur.", settings.PeekTrackChanges, value => settings.PeekTrackChanges = value);
                 Choice("Mini bildirim süresi", "Üzerinde beklerken kapanmaz; fare ayrılınca kalan süre devam eder.", new[] { "2 saniye", "4 saniye", "6 saniye" }, settings.PeekSeconds / 2 - 1,
                     value => { settings.PeekSeconds = (value + 1) * 2; apply(true); });
@@ -212,17 +212,42 @@ namespace Widgates
                 Toggle("Araya giren medya kapanınca müziğe dön", "Üstteki öncelik açıkken, yalnızca Morf'un duraklattığı uygun müziği devam ettirir. Sadece duraklatılan video kapanmış sayılmaz.", settings.ResumeInterrupted, value => settings.ResumeInterrupted = value);
                 SourceRuleControls(false);
                 Toggle("Süre çubuğunu göster", "Oynatıcı destekliyorsa tek tıkla veya sürükleyerek konum seçin.", settings.ShowTimeline, value => settings.ShowTimeline = value);
+                var pipToggle = Toggle("Pencere içinde video · PiP", "Videoyu çalışırken üstte tutun.", settings.PictureInPicture, null);
+                pipToggle.Click += (_, __) =>
+                {
+                    settings.PictureInPicture = pipToggle.IsChecked == true;
+                    apply(true);
+                    SelectPage(2);
+                    if (settings.PictureInPicture && actions.SetupPictureInPicture != null
+                        && (actions.PictureInPictureConnected == null || !actions.PictureInPictureConnected())) actions.SetupPictureInPicture();
+                };
+                if (settings.PictureInPicture)
+                {
+                    Border seekCard = null;
+                    Choice("Video penceresi", "Standart görünümde gri başlık yoktur. Gelişmiş görünüm sarma ve zaman çubuğu ekler; tarayıcı başlığı görünür.",
+                        new[] { "Standart · Başlıksız", "Gelişmiş · Morf denetimleri" }, settings.PictureInPictureAdvanced ? 1 : 0,
+                        value => { settings.PictureInPictureAdvanced = value == 1; if (seekCard != null) seekCard.Visibility = value == 1 ? Visibility.Visible : Visibility.Collapsed; apply(true); });
+                    Choice("PiP sarma süresi", "İleri ve geri sarma düğmeleri",
+                        new[] { "10 saniye · Varsayılan", "5 saniye", "15 saniye" }, settings.PictureInPictureSeekSeconds == 5 ? 1 : settings.PictureInPictureSeekSeconds == 15 ? 2 : 0,
+                        value => { settings.PictureInPictureSeekSeconds = value == 1 ? 5 : value == 2 ? 15 : 10; apply(true); });
+                    seekCard = (Border)page.Children[page.Children.Count - 1];
+                    seekCard.Visibility = settings.PictureInPictureAdvanced ? Visibility.Visible : Visibility.Collapsed;
+                    var pipSetup = Labels("Tarayıcı bağlantısı", actions.PictureInPictureStatus == null ? "" : actions.PictureInPictureStatus());
+                    pipSetup.Children.Add(Button("Eklentiyi kur", () => { if (actions.SetupPictureInPicture != null) actions.SetupPictureInPicture(); }));
+                    Card(pipSetup);
+                }
                 Toggle("Windows ses denetimi", "Hoparlör, ses kaydırıcısı ve ada üzerinde tekerlekle ses ayarı.", settings.ScrollVolume, value => settings.ScrollVolume = value);
                 Choice("Ses hedefi", "Oynatıcı sesi yalnızca seçili medya uygulamasını etkiler. Tarayıcının sekmeleri aynı uygulama olarak değerlendirilir.", new[] { "Sistem sesi", "Oynatıcı sesi" }, settings.PlayerVolume ? 1 : 0,
                     value => { settings.PlayerVolume = value == 1; apply(true); });
                 var note = Text("Karıştırma, tekrar ve baştan oynatma yalnızca kaynağın desteklediği durumlarda görünür.", 11);
                 note.Foreground = ThemePalette.Muted; note.Margin = new Thickness(4, 8, 4, 0); page.Children.Add(note);
-                Choice("Ses tekerleği alanı", "Yalnızca ses denetimi açıkken uygulanır. Dosya ve süre kaydırma hareketleri korunur.", new[] { "Tüm hap", "Yalnızca hoparlör" }, settings.ScrollVolumeOnWholeIsland ? 0 : 1,
+                Choice("Ses tekerleği alanı", "Ses denetimi açıkken uygulanır.", new[] { "Tüm kapsül", "Yalnızca hoparlör" }, settings.ScrollVolumeOnWholeIsland ? 0 : 1,
                     value => { settings.ScrollVolumeOnWholeIsland = value == 0; apply(true); });
                 var status = Labels("Önceki müziğe dönüş", "Otomatik dönüş güvenli bir kapanış bekler. Duraklatılmış tarayıcı oturumu açık sayılır.");
                 mediaStatus = Text("", 11); mediaStatus.Margin = new Thickness(0, 10, 0, 8); status.Children.Add(mediaStatus);
                 status.Children.Add(Button("Önceki müziğe dön", async () => { if (actions.ResumePrevious != null) await actions.ResumePrevious(); RefreshRuntimeStatus(); })); Card(status);
                 SleepControls();
+                Advanced("Uygulama bağlantıları", MusicConnectionsControls);
             }
             else if (index == 3)
             {
@@ -230,13 +255,13 @@ namespace Widgates
                 startup.Click += (_, __) => { if (configureStartup(startup.IsChecked == true)) apply(true); else startup.IsChecked = settings.StartWithWindows; };
                 Toggle("Bildirim alanı simgesi", "Aç, ayarlar, 15 dakika gizle ve çıkış seçeneklerine erişim sağlar.", settings.ShowTrayIcon, value => settings.ShowTrayIcon = value);
                 Toggle("Oyunlarda gizle", "Algılanan oyunlarda kısayolla da ekran önüne gelmez.", settings.HideInGames, value => settings.HideInGames = value);
+                Toggle("Tüm masaüstlerinde göster", "Masaüstü değiştiğinde kapsül sizi izler.", settings.FollowDesktops, value => settings.FollowDesktops = value);
                 var hide = Labels("Geçici gizleme", "15 dakika boyunca ana hap ve mini bildirim görünmez. Kısayol veya Morf'u yeniden açmak gizlemeyi iptal eder.");
                 hide.Children.Add(Button("15 dakika gizle", () => { if (actions.HideTemporarily != null) actions.HideTemporarily(); })); Card(hide);
                 Advanced("Gelişmiş sistem ayarları", () => {
                     MonitorChoice();
                     Choice("Hafif mod", "Otomatik: pilde veya tasarrufta hareketi azaltır. Kilitte görsel güncellemeler durur.", new[] { "Otomatik (varsayılan)", "Her zaman", "Kapalı" }, (int)settings.Lightweight, value => { settings.Lightweight = (LightweightMode)value; apply(true); });
                     Toggle("Diğer tam ekran pencerelerde de gizle", "Tarayıcı ve video gibi tam ekran pencereler için ayrı tercih.", settings.HideInFullscreen, value => settings.HideInFullscreen = value);
-                    Toggle("Sanal masaüstlerini izle", "Yalnızca Morf penceresini geçerli masaüstüne taşır.", settings.FollowDesktops, value => settings.FollowDesktops = value);
                     RulesControls();
                 });
             }
@@ -360,9 +385,25 @@ namespace Widgates
             string[] values = settings.Hotkeys;
             for (int i = 0; i < 4; i++)
             {
-                string[] examples = { "", "Ctrl+Alt+P", "Ctrl+Alt+J", "Ctrl+Alt+K" };
-                var card = Labels(titles[i], i == 0 ? "Varsayılan: Ctrl+Alt+M. Örnek: Ctrl+Shift+M." : "İsteğe bağlı; boş bırakılırsa kapalıdır. Örnek: " + examples[i] + ".");
-                inputs[i] = Editor(values[i], 40); AutomationProperties.SetName(inputs[i], titles[i] + " kısayolu"); card.Children.Add(inputs[i]); Card(card);
+                var card = new Grid();
+                card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.35, GridUnitType.Star) });
+                card.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var labels = Labels(titles[i], i == 0 ? "Varsayılan: Ctrl+Alt+M" : "İsteğe bağlı");
+                labels.VerticalAlignment = VerticalAlignment.Center; labels.Margin = new Thickness(0, 0, 10, 0); card.Children.Add(labels);
+                var input = inputs[i] = Editor(values[i], 40);
+                input.IsReadOnly = true; input.TextWrapping = TextWrapping.NoWrap;
+                input.Margin = new Thickness(0); input.VerticalAlignment = VerticalAlignment.Center;
+                input.ToolTip = "Tıklayın ve tuşlara basın. Sil: temizle · Esc: vazgeç";
+                AutomationProperties.SetName(input, titles[i] + " kısayolu");
+                input.PreviewKeyDown += (_, e) => CaptureShortcut(input, e);
+                Grid.SetColumn(input, 1); card.Children.Add(input);
+                string fallback = i == 0 ? "Ctrl+Alt+M" : "";
+                var clear = Button(i == 0 ? "↺" : "×", () => input.Text = fallback);
+                clear.ToolTip = i == 0 ? "Varsayılana dön" : "Temizle";
+                AutomationProperties.SetName(clear, titles[i] + " · " + clear.ToolTip);
+                clear.Width = 32; clear.Padding = new Thickness(4); clear.Margin = new Thickness(4, 0, 0, 0);
+                Grid.SetColumn(clear, 2); card.Children.Add(clear); Card(card);
             }
             page.Children.Add(Button("Kısayolları uygula", () =>
             {
@@ -370,6 +411,24 @@ namespace Widgates
                 if (actions.ConfigureHotkeys(new[] { inputs[0].Text, inputs[1].Text, inputs[2].Text, inputs[3].Text }))
                 { SetNotice("Kısayollar uygulandı."); SelectPage(4); }
             }));
+        }
+
+        private void CaptureShortcut(TextBox input, KeyEventArgs e)
+        {
+            if (e.Key == Key.Tab) return;
+            e.Handled = true;
+            if (e.Key == Key.Escape) { Keyboard.ClearFocus(); return; }
+            if (e.Key == Key.Back || e.Key == Key.Delete) { input.Clear(); return; }
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt || key == Key.LeftShift || key == Key.RightShift) return;
+            var modifiers = Keyboard.Modifiers;
+            string name = key >= Key.D0 && key <= Key.D9 ? ((int)(key - Key.D0)).ToString() : key.ToString();
+            string text = ((modifiers & ModifierKeys.Control) != 0 ? "Ctrl+" : "")
+                + ((modifiers & ModifierKeys.Alt) != 0 ? "Alt+" : "") + ((modifiers & ModifierKeys.Shift) != 0 ? "Shift+" : "") + name;
+            HotkeyBinding binding;
+            if ((modifiers & ModifierKeys.Windows) == 0 && HotkeyBinding.TryParse(text, out binding))
+            { input.Text = binding.Text; SetNotice(""); }
+            else SetNotice("Ctrl veya Alt ile bir harf, sayı ya da F tuşu seçin. F12 kullanılamaz.");
         }
 
         private void SleepControls()
@@ -530,6 +589,7 @@ namespace Widgates
         {
             var panel = new StackPanel(); panel.Children.Add(Text(title, 13, true));
             var description = Text(detail, 11); description.Foreground = ThemePalette.Muted; description.Margin = new Thickness(0, 6, 0, 0);
+            description.Visibility = string.IsNullOrWhiteSpace(detail) ? Visibility.Collapsed : Visibility.Visible;
             panel.Children.Add(description); return panel;
         }
         private static TextBlock Text(string value, double size, bool bold = false) { return new TextBlock { Text = value, FontSize = size,

@@ -63,8 +63,13 @@ Yükleyicisi gereklidir; kurulumun tamamlandığını Windows penceresinden kont
 Morf açıksa kendi Çıkış menüsüyle kapatın; geçici raf bellekte tutulur.
 Mevcut Morf ayarları güncellemede korunur. Morf'u Başlat menüsünden açın.
 
-Bildirimler için Morf > Ayarlar > Uygulamalar bölümünden Windows iznini verin.
+Bildirimler için Morf > Ayarlar > Bildirimler bölümünden Windows iznini verin.
 WhatsApp bildirimi uygulamayı açar; sohbeti WhatsApp içinden seçebilirsiniz.
+Küçük video penceresi için Ayarlar > Medya ve ses > Pencere içinde video · PiP
+seçeneğini açın ve tarayıcı eklentisinin kurulum adımlarını izleyin.
+Eklenti yerel geliştirme önizlemesidir; mağaza kurulumu veya tüm tarayıcılarda
+uyumluluk iddiası değildir. Standart görünüm başlıksız tarayıcı video penceresi,
+gelişmiş görünüm ise Morf denetimleri ve tarayıcı başlığı kullanır.
 Morf standart kullanıcı olarak çalışır. Çoklu ses çıkışı deneyseldir.
 Windows 10 1809+ API tabanı ve .NET Framework 4.8 gerekir; tüm cihazlarda
 uyumluluk ve başka bilgisayarda kurulum henüz doğrulanmadı.

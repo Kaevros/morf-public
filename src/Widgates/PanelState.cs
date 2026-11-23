@@ -4,14 +4,13 @@ namespace Widgates
     internal sealed class PanelState
     {
         internal bool Expanded, Latched, Persistent;
-        private bool wasExpanded, wasLatched;
         internal bool SettingsOpen { get; private set; }
-        internal void SuspendForSettings() { wasExpanded = Expanded; wasLatched = Latched; SettingsOpen = true; Expanded = Latched = false; }
-        internal void RestoreAfterSettings(bool allowed)
+        internal void BeginSettings() { SettingsOpen = true; }
+        internal void EndSettings(bool allowed)
         {
             SettingsOpen = false;
-            Expanded = allowed && (wasExpanded || Persistent); Latched = allowed && (wasLatched || Persistent);
+            if (!allowed) Expanded = Latched = false;
         }
-        internal bool CanHover(bool suppressed, bool hidden) { return !SettingsOpen && !suppressed && !hidden; }
+        internal bool CanHover(bool suppressed, bool hidden) { return !suppressed && !hidden; }
     }
 }

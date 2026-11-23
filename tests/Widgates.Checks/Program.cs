@@ -231,6 +231,7 @@ namespace Widgates
                 await PlayerVolumeChecks.RunAsync();
                 await RefreshExitChecks.RunAsync(output);
                 await PlayerRefinementChecks.RunAsync(output);
+                await PictureInPictureChecks.RunAsync(output);
                 await MetadataRaceChecks.RunAsync();
                 await PerformanceOptimizationChecks.RunAsync();
                 SettingsBindingChecks.Run();

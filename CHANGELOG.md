@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.3-preview maintenance — 2026-11-23
+
+- Add the opt-in Chromium companion extension and bounded native messaging for browser-owned picture-in-picture. Standard video PiP is the default; the optional advanced player provides seeking, a timeline and source-supported controls.
+- Route Chromium's actual origin-first native-host invocation before WPF and single-instance activation, preventing playback from incorrectly opening and latching the capsule.
+- Guard YouTube watch-page metadata against recommendation preview artwork and retain exact linked browser/session checks.
+- Keep the capsule usable while settings are open, clear stale swipe/click state, and limit virtual-desktop synchronization to relevant events and bounded transition retries.
+- Simplify settings navigation, notification disclosures and local shortcut capture while retaining independent surface transparency preferences.
+- Record real Brave/YouTube/native-transport verification and remaining device/runtime gaps in [the PiP report](docs/PICTURE-IN-PICTURE.md) and [the wider QA report](docs/QA-2026-11-23.md).
+
 ## 0.3.3-preview — 2026-11-20
 
 - Make WhatsApp notification opening explicit and bounded: preserve the stable/Beta source, recognize the current Beta identity, and use exact package activation when registered-app opening is unavailable.

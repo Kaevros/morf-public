@@ -93,6 +93,17 @@ namespace Widgates
                     {
                         dialog.SelectPage(pageIndex); await Task.Delay(80); dialog.UpdateLayout();
                         Capture(surface, Path.Combine(output, "settings-" + preference + "-" + pageIndex + ".png"));
+                        if (pageIndex == 4)
+                        {
+                            var inputs = Descendants(surface).OfType<TextBox>().ToArray();
+                            Check(inputs.Length == 4 && inputs.All(input => input.IsReadOnly), preference + " shortcuts expose four key-capture fields");
+                            inputs[1].RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, PresentationSource.FromVisual(dialog), Environment.TickCount, System.Windows.Input.Key.F6)
+                                { RoutedEvent = UIElement.PreviewKeyDownEvent });
+                            Check(inputs[1].Text == "F6" && model.PlayHotkey == "", preference + " a captured shortcut stays a draft until Apply");
+                            inputs[1].RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, PresentationSource.FromVisual(dialog), Environment.TickCount, System.Windows.Input.Key.Delete)
+                                { RoutedEvent = UIElement.PreviewKeyDownEvent });
+                            Check(inputs[1].Text == "", preference + " Delete clears an optional shortcut");
+                        }
                         Check(dialog.SelectedPage == pageIndex && Field<StackPanel>(dialog, "page").ActualHeight > 0, preference + " settings page " + pageIndex + " is available");
                         if (pageIndex == 1)
                         {

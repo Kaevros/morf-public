@@ -27,7 +27,7 @@ namespace Widgates
         private readonly VirtualDesktopLink desktops = new VirtualDesktopLink();
         private readonly IntPtr desktopVisibilityHook;
         private Task desktopRefresh;
-        private bool desktopPending, disposed;
+        private bool desktopPending, disposed, desktopSyncNeeded;
         private bool onCurrentDesktop = true;
         private readonly uint ownProcess;
         private readonly HotkeySet hotkeys;
@@ -191,9 +191,13 @@ namespace Widgates
             // Keep the state of the last external window while the keyboard shortcut gives us focus.
             RefreshForeground(foreground);
             if (!gameActive && onCurrentDesktop && window.IsVisible) EnsureTopmost();
-            if (desktopRefresh == null || desktopRefresh.IsCompleted)
-                desktopRefresh = RefreshDesktopAsync(FollowDesktops);
-            else desktopPending = true;
+            if (desktopSyncNeeded)
+            {
+                desktopSyncNeeded = false;
+                if (desktopRefresh == null || desktopRefresh.IsCompleted)
+                    desktopRefresh = RefreshDesktopAsync(FollowDesktops);
+                else desktopPending = true;
+            }
         }
 
         internal void EnsureTopmost()
@@ -207,6 +211,14 @@ namespace Widgates
             try
             {
                 var result = await desktops.RefreshAsync(source.Handle, GetForegroundWindow(), follow);
+                // Explorer's cloak notification can precede desktop registration.
+                // Retry only this observed transition, with a strict bound and no idle timer.
+                for (int attempt = 0; follow && result.Available && result.Transition && !result.OnCurrentDesktop && attempt < 2; attempt++)
+                {
+                    await Task.Delay(attempt == 0 ? 120 : 300);
+                    if (disposed) return;
+                    result = await desktops.RefreshAsync(source.Handle, GetForegroundWindow(), follow);
+                }
                 if (disposed) return;
                 bool current = result.Available ? result.OnCurrentDesktop : !IsShellCloaked(source.Handle);
                 if (current != onCurrentDesktop || result.Transition)
@@ -218,7 +230,7 @@ namespace Widgates
             }
             finally
             {
-                if (desktopPending && !disposed) { desktopPending = false; QueueRefresh(); }
+                if (desktopPending && !disposed) { desktopPending = false; desktopSyncNeeded = true; QueueRefresh(); }
             }
         }
 
@@ -267,6 +279,10 @@ namespace Widgates
 
         private void OnDesktopEvent(IntPtr hook, uint kind, IntPtr hwnd, int objectId, int childId, uint thread, uint time)
         {
+            if (disposed) return;
+            if ((hwnd == source.Handle && (kind == 0x8017 || kind == 0x8018))
+                || (kind == ForegroundEvent && (!onCurrentDesktop || IsShellCloaked(source.Handle))))
+                desktopSyncNeeded = true;
             if (!disposed && kind == ForegroundEvent) RefreshForeground(hwnd);
             if (kind == ForegroundEvent || (hwnd == source.Handle && (kind == 0x8017 || kind == 0x8018))
                 || ((hwnd == watchedForeground || hwnd == taskbar) && objectId == 0 && childId == 0))

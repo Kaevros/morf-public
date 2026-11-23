@@ -56,7 +56,7 @@ namespace Widgates
                     else Console.WriteLine("UNVERIFIED " + dock + " intermediate motion: Windows motion or rendering is unavailable");
                     await Task.Delay(280); widget.UpdateLayout();
                     Check(double.IsNaN(layout.Width) && double.IsNaN(layout.Height) && panel.Visibility == Visibility.Visible,
-                        dock + " returns to responsive layout when opening finishes");
+                        dock + " returns to responsive layout when opening finishes (layout=" + layout.Width + "x" + layout.Height + ", panel=" + panel.Visibility + ", shell clock=" + shell.HasAnimatedProperties + ")");
                     Check(!shell.HasAnimatedProperties && !panel.HasAnimatedProperties,
                         dock + " releases completed shell and panel animation clocks");
                     Capture(shell, Path.Combine(output, "open-" + dock + ".png"));

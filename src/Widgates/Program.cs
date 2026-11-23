@@ -14,7 +14,10 @@ namespace Widgates
         [STAThread]
         private static void Main(string[] args)
         {
+            if (PictureInPictureHost.IsInvocation(args)) { Environment.ExitCode = PictureInPictureHost.Run(args); return; }
             if (args.Length > 0 && args[0] == NotificationBannerGuard.Argument) { Environment.ExitCode = NotificationBannerGuard.Run(args); return; }
+            // Unknown/background invocations must never signal the visible capsule.
+            if (args.Length != 0) { Environment.ExitCode = 2; return; }
             if (!PlatformSupport.IsSupported(Environment.OSVersion.Version))
             {
                 MessageBox.Show("Morf için Windows 10 1809 (17763) veya daha yeni bir Windows sürümü gerekir.",
@@ -36,6 +39,7 @@ namespace Widgates
                     return;
                 }
 
+                bool firstLaunch = !System.IO.File.Exists(WidgetSettings.DefaultPath);
                 var settings = WidgetSettings.Load(WidgetSettings.DefaultPath);
                 bool startupChanged;
                 bool startupReady = new StartupRegistration().Initialize(settings, out startupChanged);
@@ -43,6 +47,7 @@ namespace Widgates
                 var application = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
                 var window = new IslandWindow(settings, StopwatchState.DefaultPath);
                 window.EnableShellServices();
+                if (firstLaunch) window.ContentRendered += (_, __) => window.OfferPictureInPictureSetup();
                 application.SessionEnding += (_, __) => window.AllowSessionExit();
                 SingleInstanceActivation activation = null;
                 try { activation = new SingleInstanceActivation(() => { if (!application.Dispatcher.HasShutdownStarted) application.Dispatcher.BeginInvoke(new Action(window.OpenFromShell)); }); }

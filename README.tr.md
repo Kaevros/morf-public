@@ -112,7 +112,7 @@ Bildirimler açıkken paketli sürüm uygun Windows başlık tercihlerini geçic
 - Taşınabilir sürüm canlı Windows bildirimi alamaz. Hızlı yanıt ve çağrı denetimi yoktur.
 - Saydam yüzeyler Apple benzeri arka plan kırılması veya yerel bulanıklık garantisi sunmaz.
 - Çoklu ses çıkışı eşitlemesi, fiziksel çoklu ekran/DPI geçişleri ve daha geniş Windows uyumluluğu için cihaz denemeleri gerekir.
-- Pencere içinde pencere özelliği dahil değildir.
+- Tarayıcı eklentili pencere içinde video (PiP), geliştirme önizlemesidir. [Kurulum](browser-extension/README.md) ve [doğrulama sınırları](docs/PICTURE-IN-PICTURE.md): mağaza dağıtımı, geniş tarayıcı/cihaz desteği, masaüstlerine sabitleme ve pil ölçümleri henüz tamamlanmadı.
 
 ## Geliştirme
 

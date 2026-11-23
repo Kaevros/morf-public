@@ -36,7 +36,7 @@ namespace Widgates
                 var settings = (SettingsWindow)typeof(IslandWindow).GetField("settingsWindow", Private).GetValue(widget);
                 Call(widget, "OnShellMouseEnter");
                 var state = (PanelState)typeof(IslandWindow).GetField("panelState", Private).GetValue(widget);
-                Check(settings.IsVisible && !state.Expanded, "Zero-delay hover cannot reopen the native panel over settings");
+                Check(settings.IsVisible && state.Expanded && state.Persistent, "Settings keep the pinned native capsule usable");
                 settings.Close();
                 Check(state.Persistent && state.Expanded && state.Latched, "Closing native settings restores an explicitly pinned panel");
                 var placement = (DesktopPlacement)typeof(IslandWindow).GetField("placement", Private).GetValue(widget);
@@ -49,6 +49,21 @@ namespace Widgates
                 Call(widget, "HideTemporarily"); Check(!widget.IsVisible, "Temporary hide removes the native main window");
                 widget.OpenFromShell(); Check(widget.IsVisible && state.Expanded, "Explicit shell recovery cancels hiding and opens the same window");
                 Call(widget, "ClosePanel"); Check(!state.Persistent && !state.Expanded, "Explicit dismissal clears persistent pinning");
+                Call(widget, "OpenSettings");
+                settings = (SettingsWindow)typeof(IslandWindow).GetField("settingsWindow", Private).GetValue(widget);
+                widget.OpenFromShell();
+                Check(state.Expanded && settings.IsVisible, "Shell activation opens the capsule while settings remain open");
+                Call(widget, "ClosePanel");
+                settings.Close();
+                Check(!state.Expanded && !state.Latched, "Closing settings does not restore a capsule the user closed meanwhile");
+                widget.IsHitTestVisible = false;
+                typeof(IslandWindow).GetMethod("SetExpanded", Private).Invoke(widget, new object[] { true });
+                var gesture = (TrackSwipe)typeof(IslandWindow).GetField("trackSwipe", Private).GetValue(widget);
+                gesture.Begin(new Point());
+                var hover = (Grid)typeof(IslandWindow).GetField("hoverSurface", Private).GetValue(widget);
+                hover.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = System.Windows.Input.Mouse.MouseLeaveEvent });
+                await Task.Delay(450);
+                Check(!gesture.Active && !state.Expanded, "A released pointer leaving the video clears stale swipes and collapses the capsule");
             }
             finally { widget.Close(); }
         }
@@ -71,11 +86,11 @@ namespace Widgates
             swipe.Cancel(); swipe.Move(new Point(200, 40));
             Check(!swipe.Active && !swipe.Moved && swipe.Command == null, "Cancellation leaves no pending gesture or input polling");
             var state = new PanelState { Expanded = true, Latched = true, Persistent = true };
-            state.SuspendForSettings();
-            Check(!state.Expanded && !state.CanHover(false, false), "Settings suspend expansion and both hover paths");
-            state.RestoreAfterSettings(true);
-            Check(state.Expanded && state.Latched && state.Persistent, "Settings restore the previous persistent panel state");
-            state.SuspendForSettings(); state.RestoreAfterSettings(false);
+            state.BeginSettings();
+            Check(state.Expanded && state.CanHover(false, false), "Settings leave expansion and hover usable");
+            state.EndSettings(true);
+            Check(state.Expanded && state.Latched && state.Persistent, "Closing settings preserves the current persistent panel state");
+            state.BeginSettings(); state.EndSettings(false);
             Check(!state.Expanded && !state.Latched, "Suppression prevents restoration over a game or another desktop");
             var items = new[] { "paused", "playing", "newest" };
             Check(MediaSourceSelection<string>.Choose(items, null, null, "paused", x => x == "playing") == "playing", "Automatic selection prefers playback over stale Windows current without auto-pause");

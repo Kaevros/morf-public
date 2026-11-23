@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Morf · Pencere içinde video",
+  "version": "0.3.0",
+  "description": "Seçtiğiniz videoyu küçük pencerede oynatın ve Morf ile bağlayın. Yalnızca siz başlattığınızda çalışır.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqWMvy/JgkIAl+05M70ipuSDaAyRtlKSWZkIA04FSEVQWBKUlwQWaxzoVmaIwG6zQRDdTv61AIAkmgoyT6ZNJlcWNHS17D7EcBAUvpxlARK4ncXW/+hg2PY6NnE52UdYrzenWc6B7fwiBoxUHg6kXJhRlKKuJyMH3L1TQYxtSsuNmDwdE7txt8TrHPzpmvQjqZRZoub4pbZpCn0JtPf638PywO4qe/E8h3qE53EO3E1mSo4YZ1C88q/AvbxmSJVpKTHz/+fo652wkdBay9OmwHajX1YRE/7cmTDWzOih9J5S9sN/Sdnv/GxOfTDspppTWrpuHXfkcyfJ+5VrUuIVg7wIDAQAB",
+  "permissions": ["activeTab", "scripting", "nativeMessaging"],
+  "content_scripts": [{
+    "matches": ["https://www.youtube.com/*", "https://www.netflix.com/*"],
+    "js": ["policy.js", "content.js", "inline.js"],
+    "run_at": "document_idle"
+  }, {
+    "matches": ["https://www.youtube.com/*"],
+    "js": ["youtube-media.js"],
+    "world": "MAIN",
+    "run_at": "document_start"
+  }],
+  "background": { "service_worker": "worker.js" },
+  "action": { "default_title": "Videoyu Morf PiP ile aç", "default_icon": "icon128.png" },
+  "icons": { "128": "icon128.png" },
+  "commands": { "_execute_action": { "suggested_key": { "default": "Alt+Shift+P" }, "description": "Videoyu Morf PiP ile aç" } },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'" }
+}

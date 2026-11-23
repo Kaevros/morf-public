@@ -1,0 +1,3 @@
+# Internal planning is committed privately and excluded from source archives.
+docs/private export-ignore
+docs/private/** export-ignore

@@ -76,7 +76,7 @@ namespace Widgates
             bool supported = command == "next" ? next.IsEnabled : command == "previous" && previous.IsEnabled;
             // A normal click keeps the existing cover/title action. Every drag consumes the click,
             // even when short, unsupported, cancelled or interrupted by a new source/track.
-            if (!moved) { trackSwipe.Cancel(); swipeSession = null; swipeTrack = null; return; }
+            if (!moved) { CancelTrackSwipe(); return; }
             e.Handled = true;
             CancelTrackSwipe();
             if (unchanged && supported && command != null) await media.CommandAsync(command, expected: expected);

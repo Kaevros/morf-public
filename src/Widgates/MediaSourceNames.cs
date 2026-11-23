@@ -15,6 +15,8 @@ namespace Widgates
             if (value.Contains("chrome")) return "Google Chrome";
             if (value.Contains("firefox")) return "Firefox";
             if (value.Contains("brave")) return "Brave";
+            if (value.Contains("opera")) return "Opera";
+            if (value.Contains("vivaldi")) return "Vivaldi";
             if (value.Contains("zunemusic") || value.Contains("mediaplayer")) return "Medya Oynatıcı";
             if (value.Contains("vlc")) return "VLC";
             string clean = new string(id.Where(character => !char.IsControl(character)).Take(120).ToArray());

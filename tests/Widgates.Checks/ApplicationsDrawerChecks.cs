@@ -40,6 +40,13 @@ namespace Widgates
                 Check(double.IsNaN(drawer.Height) && drawer.Opacity == 1 && !drawer.HasAnimatedProperties,
                     "An open drawer returns to responsive height without a remaining animation clock");
                 Capture((FrameworkElement)dialog.Content, Path.Combine(output, "applications-on.png"));
+                var disclosure = Field<Button>(dialog, "notificationDisclosure");
+                disclosure.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(280);
+                Check(model.WindowsNotifications && drawer.Visibility == Visibility.Collapsed && !drawer.IsHitTestVisible,
+                    "The disclosure hides notification options without disabling notifications");
+                disclosure.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); await Task.Delay(280);
+                Check(drawer.Visibility == Visibility.Visible && !drawer.HasAnimatedProperties && applies == 1,
+                    "Reopening notification details reuses controls without changing or saving preferences");
                 Click(toggle, false); await Task.Delay(40); Click(toggle, true); await Task.Delay(280);
                 Check(drawer.Visibility == Visibility.Visible && double.IsNaN(drawer.Height) && drawer.Opacity == 1,
                     "Rapid close and reopen cannot leave the drawer clipped or hidden");
