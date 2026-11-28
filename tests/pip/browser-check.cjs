@@ -16,7 +16,7 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.MORF_CHROMIUM_EXECUTABLE, headless: process.env.MORF_HEADED !== "1",
-    args: ["--autoplay-policy=no-user-gesture-required"] });
+    args: ["--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling", "--disable-renderer-backgrounding"] });
   try {
     const context = await browser.newContext({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
     context.setDefaultTimeout(7000);
@@ -26,6 +26,7 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     await page.goto("https://video.morf.test/player");
     await page.evaluate(async () => {
       const handlers = new Set(); window.__messages = [];
+      window.chrome ||= {};
       window.chrome.runtime = {
         sendMessage: async message => { window.__messages.push(message); },
         onMessage: { addListener: fn => handlers.add(fn), removeListener: fn => handlers.delete(fn) }
@@ -45,7 +46,11 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
       recorder.stop(); await done; stream.getTracks().forEach(track => track.stop());
       const video = document.querySelector("video");
       video.src = URL.createObjectURL(new Blob(chunks, { type: "video/webm" }));
-      await new Promise(resolve => { video.onloadeddata = resolve; }); await video.play();
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Generated fixture video did not load within ten seconds")), 10000);
+        video.onloadeddata = () => { clearTimeout(timeout); resolve(); };
+        video.onerror = () => { clearTimeout(timeout); reject(new Error("Generated fixture video failed: " + video.error?.message)); };
+      }); await video.play();
       navigator.mediaSession.metadata = new MediaMetadata({ title: "Morf test video", artist: "Morf checks" });
     });
     for (const file of ["policy.js", "content.js"]) await page.addScriptTag({ path: path.join(root, "browser-extension", file) });
@@ -89,11 +94,42 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     check(!pip.isClosed(), "A stale or forged session token cannot close the current PiP video");
     await page.evaluate(token => window.__deliver({ channel: "morf-pip", session: token, type: "config", seekSeconds: 5 }), token);
     check(await pip.getByRole("button", { name: "5 saniye ileri", exact: true }).count() === 1, "An explicit setting change updates active controls without restarting playback");
+    await pip.getByRole("button", { name: "PiP ayarları", exact: true }).click();
+    await pip.getByLabel("Oynatma hızı", { exact: true }).selectOption("1.5");
+    await pip.getByLabel("Ses düzeyi", { exact: true }).press("Home");
+    await pip.getByLabel("Ses düzeyi", { exact: true }).press("ArrowRight");
+    await pip.getByLabel("Sesi kapat", { exact: true }).check();
+    check(await pip.locator("video").evaluate(video => video.playbackRate === 1.5 && video.volume === 0.01 && video.muted),
+      "PiP settings change the original video's speed, volume and mute state");
+    check(await pip.getByLabel("Bitince sonraki video", { exact: true }).isDisabled(), "Automatic next is unavailable when the source has no next action");
+    await pip.getByLabel("Videoyu tekrarla", { exact: true }).uncheck();
+    check(!await pip.locator("video").evaluate(video => video.loop), "Repeat follows the explicit PiP setting");
+    await pip.getByLabel("Videoyu tekrarla", { exact: true }).check();
+    await pip.setViewportSize({ width: 216, height: 122 });
+    check(await pip.locator(".settings").evaluate(panel => panel.scrollHeight > panel.clientHeight
+      && panel.getBoundingClientRect().right <= innerWidth), "Settings remain inside the smallest PiP and scroll to every control");
+    await pip.setViewportSize({ width: 384, height: 300 });
+    await pip.screenshot({ path: path.join(output, "pip-settings.png") });
+    await pip.getByRole("button", { name: "Oynatıcıya dön", exact: true }).click();
     await pip.getByRole("button", { name: "Duraklat ve PiP'yi kapat", exact: true }).click();
     await pip.waitForEvent("close").catch(() => {});
     check(await page.locator("video").evaluate(video => video.paused && video.getAttribute("style") === "width:640px;height:360px"), "Closing pauses and restores the original video and its source style");
     check(await page.evaluate(() => window.__listenerCount() === 0), "Closing removes the selected video's runtime listener");
     check(await page.evaluate(() => ![...document.querySelector("#source").childNodes].some(node => node.nodeType === 8)), "Closing removes the temporary source placeholder");
+
+    await page.evaluate(async token => {
+      await window.__morfPip.open({ session: token, seekSeconds: 10, advanced: true, prepare: true });
+      const original = document.querySelector("video"), replacement = original.cloneNode(true);
+      replacement.dataset.prepared = "true"; original.replaceWith(replacement);
+      document.querySelector("#start").onclick = () => { window.__opened = window.__morfPip.openInline(); };
+    }, token);
+    const preparedEvent = context.waitForEvent("page"); await page.getByRole("button", { name: "PiP aç", exact: true }).click(); const prepared = await preparedEvent;
+    await prepared.waitForSelector("video[data-prepared=true]");
+    check(await page.locator("#source video").count() === 0, "A prepared session follows source replacement before PiP is first opened");
+    await prepared.locator("main").hover(); await prepared.getByRole("button", { name: "Duraklat ve PiP'yi kapat", exact: true }).click();
+    await page.evaluate(token => {
+      document.querySelector("#start").onclick = () => { window.__opened = window.__morfPip.open({ session: token, seekSeconds: 10, advanced: true }); };
+    }, token);
 
     const reopen = context.waitForEvent("page"); await page.getByRole("button", { name: "PiP aç", exact: true }).click(); const second = await reopen;
     await second.waitForSelector("video"); await second.locator("main").hover();
@@ -102,11 +138,33 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     check(await page.locator("video").evaluate(video => !video.paused), "Return to tab restores the video while keeping playback running");
     check(await page.evaluate(() => window.__listenerCount() === 0), "Return to tab releases the PiP session resources");
 
+    const keepPlayingEvent = context.waitForEvent("page"); await page.getByRole("button", { name: "PiP aç", exact: true }).click(); const keepPlaying = await keepPlayingEvent;
+    await keepPlaying.locator("main").hover();
+    await keepPlaying.getByRole("button", { name: "PiP ayarları", exact: true }).click();
+    await keepPlaying.getByLabel("Kapatınca duraklat", { exact: true }).uncheck();
+    await keepPlaying.getByRole("button", { name: "Oynatıcıya dön", exact: true }).click();
+    await keepPlaying.getByRole("button", { name: "PiP'yi kapat", exact: true }).click();
+    check(await page.locator("video").evaluate(video => !video.paused), "Disabling pause-on-close preserves playback when the user closes PiP");
+
     const lastOpen = context.waitForEvent("page"); await page.getByRole("button", { name: "PiP aç", exact: true }).click(); const last = await lastOpen;
     await last.waitForSelector("video");
     await page.evaluate(token => window.__deliver({ channel: "morf-pip", session: token, type: "dispose" }), token);
     await last.waitForEvent("close").catch(() => {});
     check(await page.locator("video").evaluate(video => video.paused) && await page.evaluate(() => window.__listenerCount() === 0), "Disabling/disconnecting Morf pauses PiP and removes its browser resources");
+    const replaceEvent = context.waitForEvent("page"); await page.getByRole("button", { name: "PiP aç", exact: true }).click(); const replaced = await replaceEvent;
+    await replaced.waitForSelector("video");
+    await page.evaluate(() => {
+      const original = documentPictureInPicture.window.document.querySelector("video");
+      const replacement = original.cloneNode(true); replacement.dataset.fresh = "true";
+      window.__retired = original; document.querySelector("#source").append(replacement);
+    });
+    await replaced.waitForSelector("video[data-fresh=true]");
+    await replaced.locator("main").hover();
+    await replaced.getByRole("button", { name: "Oynat", exact: true }).click();
+    await replaced.waitForFunction(() => !document.querySelector("video").paused);
+    check(!replaced.isClosed() && await page.evaluate(() => window.__retired.paused), "A new source player replaces the old one in the same window and retires old playback");
+    await replaced.getByRole("button", { name: "Duraklat ve PiP'yi kapat", exact: true }).click();
+    check(await page.locator("#source video").count() === 1, "Closing after source replacement restores only the current video");
     const mediaBytes = await page.evaluate(async () => Array.from(new Uint8Array(await (await fetch(document.querySelector("video").src)).arrayBuffer())));
     // The standard path must use video PiP and leave the original DOM in its tab.
     await page.evaluate(token => {
@@ -125,6 +183,7 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     await page.goto("https://www.youtube.com/watch?v=main1234567");
     await page.evaluate(async ({ token, data }) => {
       const listeners = new Set(); window.__next = 0; window.__previous = 0;
+      window.chrome ||= {};
       window.chrome.runtime = { sendMessage: async () => {}, onMessage: { addListener: fn => listeners.add(fn), removeListener: fn => listeners.delete(fn) } };
       const source = document.querySelector("#source"), video = document.querySelector("video");
       const player = document.createElement("div"); player.id = "movie_player";
@@ -154,6 +213,31 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     await adapter.getByRole("button", { name: "Sonraki video", exact: true }).click();
     await adapter.getByRole("button", { name: "Önceki video", exact: true }).click();
     check(await page.evaluate(() => window.__next === 1 && window.__previous === 1), "Available previous/next actions invoke the original controller buttons inside the transferred player");
+    await adapter.getByRole("button", { name: "PiP ayarları", exact: true }).click();
+    await adapter.getByLabel("Bitince sonraki video", { exact: true }).check();
+    check(!await adapter.locator("video").evaluate(video => video.loop), "Automatic next and repeat are mutually exclusive");
+    await adapter.getByRole("button", { name: "Oynatıcıya dön", exact: true }).click();
+    await adapter.locator("video").evaluate(video => { video.currentTime = Math.max(0, video.duration - 0.1); });
+    await page.waitForFunction(() => window.__next === 2);
+    check(!adapter.isClosed(), "A real ended event advances through the original next action without closing PiP");
+    await adapter.getByRole("button", { name: "PiP ayarları", exact: true }).click();
+    await adapter.getByLabel("Bitince sonraki video", { exact: true }).uncheck();
+    await adapter.getByLabel("Videoyu tekrarla", { exact: true }).check();
+    await adapter.getByRole("button", { name: "Oynatıcıya dön", exact: true }).click();
+    await adapter.locator("video").evaluate(video => { video.pause(); video.dispatchEvent(new Event("ended")); });
+    check(!adapter.isClosed(), "Pause and end leave the same PiP window open");
+    await adapter.locator("video").evaluate(video => {
+      window.__replacement = video.cloneNode(true); window.__replacement.dataset.replacement = "true"; video.remove();
+    });
+    await adapter.waitForFunction(() => document.querySelector(".play").disabled);
+    check(!adapter.isClosed() && await adapter.locator(".feedback").textContent() === "Sonraki video bekleniyor…",
+      "A gap without a video keeps PiP open with disabled playback controls");
+    await adapter.evaluate(() => document.querySelector(".html5-video-container").append(window.__replacement));
+    await adapter.waitForFunction(() => document.querySelector(".play").getAttribute("aria-label") === "Oynat");
+    await adapter.getByRole("button", { name: "Oynat", exact: true }).click();
+    await adapter.waitForFunction(() => !document.querySelector("video").paused);
+    check(!adapter.isClosed() && await adapter.locator("video").getAttribute("data-replacement") === "true",
+      "Replacing a video's element rebinds playback controls inside the existing PiP window");
     await adapter.evaluate(() => {
       const player = document.querySelector("#movie_player");
       const ads = document.createElement("div"); ads.className = "video-ads";
@@ -166,6 +250,17 @@ const check = (value, label) => { assert.ok(value, label); console.log("PASS " +
     await adapter.locator("button.ytp-skip-ad-button").evaluate(button => button.hidden = false);
     await skipAd.click();
     check(!await adapter.locator("#movie_player").evaluate(player => player.classList.contains("ad-showing")), "Skip invokes the original ad control when it becomes available");
+    await page.evaluate(() => {
+      const original = documentPictureInPicture.window.document.querySelector("#movie_player");
+      const replacement = original.cloneNode(true); replacement.dataset.fresh = "true";
+      window.__retiredYoutube = original.querySelector("video");
+      replacement.querySelector(".ytp-next-button").onclick = () => window.__next++;
+      document.querySelector("#source").replaceChildren(replacement);
+    });
+    await adapter.waitForSelector("#movie_player[data-fresh=true] video");
+    await adapter.getByRole("button", { name: "Sonraki video", exact: true }).click();
+    check(await page.evaluate(() => window.__retiredYoutube.paused && window.__next === 3),
+      "Replacing the whole YouTube player preserves the same PiP and rebinds the new controller");
     await adapter.getByRole("button", { name: "Duraklat ve PiP'yi kapat", exact: true }).click();
     check(await page.locator("#movie_player video").evaluate(video => video.paused), "The bounded YouTube player subtree is restored with its original video");
     check(errors.length === 0, "No uncaught browser errors: " + errors.join("; "));

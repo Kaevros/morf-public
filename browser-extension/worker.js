@@ -151,7 +151,16 @@ api.runtime.onMessage.addListener((message, sender, respond) => {
 api.tabs.onRemoved.addListener(tabId => { if (selected?.tabId === tabId) finish(selected, false); });
 api.tabs.onUpdated.addListener((tabId, change) => {
   if (selected?.tabId !== tabId) return;
-  if (change.status === "loading") { finish(selected); return; }
+  // A loading notification is not proof that the selected document was destroyed.
+  // Same-document video transitions keep their port; actual pagehide sends "closed".
+  if (change.status === "complete" && selected.ready) {
+    const state = selected;
+    // A document-scoped acknowledgement also releases a host if navigation dropped
+    // the unloading document's final message. No heartbeat or retry timer.
+    void api.tabs.sendMessage(tabId, { channel: "morf-pip", session: state.session, type: "probe" },
+      state.documentId ? { documentId: state.documentId } : { frameId: 0 })
+      .then(reply => { if (reply?.session !== state.session) finish(state); }).catch(() => finish(state));
+  }
   if (change.url) {
     try { if (new URL(change.url).origin !== selected.origin) finish(selected); }
     catch { finish(selected); }

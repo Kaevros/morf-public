@@ -20,7 +20,7 @@
     let title = data?.title;
     let artist = data?.artist;
     if (state.youtube) {
-      const moviePlayer = document.getElementById("movie_player");
+      const moviePlayer = state.transfer;
       const videoData = moviePlayer?.getVideoData?.();
       if (videoData?.title) {
         title = videoData.title;
@@ -39,7 +39,7 @@
   function chooseVideo() {
     const youtube = location.hostname === "youtube.com" || location.hostname.endsWith(".youtube.com");
     if (youtube) {
-      const main = document.querySelector("#movie_player video");
+      const main = document.querySelector("#movie_player video") || active?.transfer?.querySelector("video");
       if (main && !main.disablePictureInPicture) return main;
     }
     return [...document.querySelectorAll("video")]
@@ -133,13 +133,14 @@
     else state.video.setAttribute("style", state.originalStyle);
     state.marker = null;
   }
-  function dispose(state, pause = true, notify = true) {
+  function dispose(state, pause = state?.pauseOnClose !== false, notify = true) {
     if (!state || state.disposed) return;
     if (pause && !state.prepared) state.video.pause();
     // Notify before marking disposed, and then remove every observer/listener/DOM affordance.
     if (notify) send(state, "closed");
     state.disposed = true;
     state.abort.abort();
+    state.mediaAbort?.abort();
     state.observer?.disconnect();
     state.playerObserver?.disconnect();
     state.adObserver?.disconnect();
@@ -153,6 +154,78 @@
   function returnToTab(state) {
     send(state, "activation"); // The worker uses trusted tabs/windows APIs, not a page URL.
     dispose(state, false);
+  }
+  function skipVideo(state, direction) {
+    const action = videoAction(state, direction);
+    if (!action) { showFeedback(state, "Bu kaynakta " + (direction === "next" ? "sonraki" : "önceki") + " video kullanılamıyor."); return; }
+    showFeedback(state, "");
+    action();
+    updateControls(state);
+  }
+  function bindVideo(state, video) {
+    state.mediaAbort?.abort();
+    state.mediaAbort = new AbortController();
+    state.video = video;
+    const options = { signal: state.mediaAbort.signal };
+    for (const event of ["play", "pause", "loadedmetadata", "durationchange", "emptied", "ended", "seeked", "volumechange", "ratechange"])
+      video.addEventListener(event, () => { updateControls(state); publish(state); }, options);
+    video.addEventListener("timeupdate", () => updateProgress(state), options);
+    video.addEventListener("ended", () => {
+      const source = video.currentSrc;
+      // Let the site's own end handler advance first, avoiding a double skip.
+      queueMicrotask(() => {
+        if (!state.disposed && state.autoNext && state.video === video && video.ended && !video.loop && video.currentSrc === source)
+          skipVideo(state, "next");
+      });
+    }, options);
+  }
+  function reconcileVideo(state) {
+    if (state.disposed) return;
+    // Prefer a newly created source player, otherwise look inside the transferred one.
+    const source = state.youtube ? document.querySelector("#movie_player video") : state.parent?.querySelector("video");
+    const candidate = source || (state.youtube ? state.transfer.querySelector("video") : null);
+    if (candidate && candidate !== state.video && !candidate.disablePictureInPicture) {
+      const transfer = state.youtube ? candidate.closest("#movie_player") || candidate : candidate;
+      if (state.pip && !state.pip.closed) {
+        if (transfer !== state.transfer) {
+          const oldTransfer = state.transfer;
+          // The site supplied a replacement. Retire the detached old player rather
+          // than restoring it beside the new one and accidentally selecting it again.
+          state.video.pause();
+          if (state.originalStyle === null) state.video.removeAttribute("style");
+          else state.video.setAttribute("style", state.originalStyle);
+          state.marker?.remove(); state.marker = null; oldTransfer.remove();
+          state.transfer = transfer;
+          state.parent = transfer.parentNode;
+          state.marker = document.createComment("Morf PiP video position");
+          transfer.before(state.marker);
+          state.pip.document.querySelector(".video").append(transfer);
+        }
+      } else {
+        state.transfer = transfer;
+        state.parent = transfer.parentNode;
+      }
+      state.originalStyle = candidate.getAttribute("style");
+      bindVideo(state, candidate);
+      observePlayer(state);
+      showFeedback(state, "");
+      publish(state);
+    }
+    if (!state.video.isConnected) {
+      if (!state.pip || state.pip.closed) { dispose(state); return; }
+      showFeedback(state, "Sonraki video bekleniyor…");
+    }
+    updateControls(state);
+  }
+  function observePlayer(state) {
+    state.observer?.disconnect();
+    state.observer = new MutationObserver(() => reconcileVideo(state));
+    if (state.parent) state.observer.observe(state.parent, { childList: true, subtree: true });
+    if (state.transfer !== state.video) state.observer.observe(state.transfer, { childList: true, subtree: true });
+    if (state.playerObserver) {
+      state.playerObserver.disconnect();
+      state.playerObserver.observe(state.transfer, { attributes: true, attributeFilter: ["class"], childList: true });
+    }
   }
   function updateProgress(state) {
     if (!state.controls || state.disposed || state.scrubbing) return;
@@ -215,6 +288,7 @@
     if (!state.controls || state.disposed) return;
     const c = state.controls;
     const paused = state.video.paused;
+    c.play.disabled = !state.video.isConnected;
     c.play.dataset.paused = String(paused);
     labelButton(c.play, paused ? "Oynat" : "Duraklat");
     c.backwardNumber.textContent = c.forwardNumber.textContent = String(state.seconds);
@@ -222,6 +296,18 @@
     labelButton(c.forward, state.seconds + " saniye ileri");
     const ranges = seekRanges(state.video);
     c.backward.hidden = c.forward.hidden = !ranges.length;
+    for (const control of [c.backward, c.forward, c.progress, c.speed, c.volume, c.muted, c.loop])
+      control.disabled = !state.video.isConnected;
+    const rate = String(state.video.playbackRate);
+    if (![...c.speed.options].some(option => option.value === rate)) {
+      const option = c.speed.ownerDocument.createElement("option"); option.value = rate; option.textContent = rate + "×"; c.speed.append(option);
+    }
+    c.speed.value = rate;
+    c.volume.value = String(Math.round(state.video.volume * 100));
+    c.muted.checked = state.video.muted;
+    c.loop.checked = state.video.loop;
+    c.autoNext.disabled = !videoAction(state, "next");
+    labelButton(c.close, state.pauseOnClose ? "Duraklat ve PiP'yi kapat" : "PiP'yi kapat");
     updateProgress(state);
     for (const direction of ["previous", "next"]) {
       const available = !!videoAction(state, direction);
@@ -309,6 +395,16 @@
       }
       .feedback { font-size: 11px; margin: 0 0 3px; text-shadow: 0 1px 3px #000; }
       .feedback:empty { display: none; }
+      .settings {
+        position: absolute; inset: 0; z-index: 2; overflow: auto; padding: 10px 14px;
+        background: #141319; font-size: 12px;
+      }
+      .settings header, .settings label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .settings header { margin-bottom: 6px; font-weight: 600; }
+      .settings label { min-height: 32px; }
+      .settings input[type=range] { width: 46%; margin: 0; }
+      .settings select { background: #292630; color: inherit; border: 1px solid #645d75; border-radius: 5px; padding: 3px; }
+      .settings input[type=checkbox] { accent-color: var(--accent); }
       [hidden] { display: none !important; }
       @media (max-height: 126px) {
         .overlay { --key: 25px; --primary: 34px; --inset: 7px; }
@@ -330,9 +426,44 @@
     };
     const skipAd = button("Reklamı geç", "skip-ad", () => skipAdTarget(state)?.click(), "Reklamı geç");
     skipAd.hidden = true;
-    top.append(title, skipAd, button("Kaynak sekmeye dön", "return", () => returnToTab(state),
+    const close = button("Duraklat ve PiP'yi kapat", "close", () => dispose(state), icon(doc, "m6 6 12 12M18 6 6 18"));
+    const settings = doc.createElement("section"); settings.className = "settings"; settings.hidden = true;
+    settings.setAttribute("aria-label", "PiP ayarları");
+    const settingsButton = button("PiP ayarları", "options", () => {
+      settings.hidden = false; settingsButton.setAttribute("aria-expanded", "true"); settingsBack.focus();
+    }, icon(doc, "M4 7h16M4 17h16M8 4v6m8 4v6"));
+    settingsButton.setAttribute("aria-expanded", "false");
+    const hideSettings = () => { settings.hidden = true; settingsButton.setAttribute("aria-expanded", "false"); settingsButton.focus(); };
+    const settingsBack = button("Oynatıcıya dön", "back", hideSettings, icon(doc, "m14 6-6 6 6 6"));
+    const heading = doc.createElement("header"); heading.append("PiP ayarları", settingsBack); settings.append(heading);
+    const row = (label, control) => {
+      const element = doc.createElement("label"); control.setAttribute("aria-label", label); element.append(label, control); settings.append(element);
+    };
+    const speed = doc.createElement("select");
+    for (const rate of [...new Set([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, state.video.playbackRate])].sort((a, b) => a - b)) {
+      const option = doc.createElement("option"); option.value = String(rate); option.textContent = rate + "×"; speed.append(option);
+    }
+    speed.addEventListener("change", () => { state.video.playbackRate = Number(speed.value); }, { signal: state.abort.signal });
+    row("Oynatma hızı", speed);
+    const volume = doc.createElement("input"); volume.type = "range"; volume.min = "0"; volume.max = "100"; volume.step = "1";
+    volume.addEventListener("input", () => { state.video.volume = Number(volume.value) / 100; state.video.muted = false; }, { signal: state.abort.signal });
+    row("Ses düzeyi", volume);
+    const checkbox = (label, value, change) => {
+      const input = doc.createElement("input"); input.type = "checkbox"; input.checked = value;
+      input.addEventListener("change", () => change(input.checked), { signal: state.abort.signal }); row(label, input); return input;
+    };
+    const muted = checkbox("Sesi kapat", state.video.muted, value => { state.video.muted = value; });
+    const loop = checkbox("Videoyu tekrarla", state.video.loop, value => {
+      state.video.loop = value; if (value) { state.autoNext = false; autoNext.checked = false; }
+    });
+    const autoNext = checkbox("Bitince sonraki video", state.autoNext, value => {
+      state.autoNext = value; if (value) { state.video.loop = false; loop.checked = false; }
+    });
+    checkbox("Kapatınca duraklat", state.pauseOnClose, value => { state.pauseOnClose = value; updateControls(state); });
+    doc.addEventListener("keydown", event => { if (event.key === "Escape" && !settings.hidden) { event.preventDefault(); hideSettings(); } }, { signal: state.abort.signal });
+    top.append(title, skipAd, settingsButton, button("Kaynak sekmeye dön", "return", () => returnToTab(state),
       icon(doc, "M12 5H5v14h14v-7M14 5h5v5m0-5-8 8")),
-    button("Duraklat ve PiP'yi kapat", "close", () => dispose(state), icon(doc, "m6 6 12 12M18 6 6 18")));
+    close);
     const bottom = doc.createElement("div"); bottom.className = "bottom";
     const feedback = doc.createElement("p"); feedback.className = "feedback"; feedback.setAttribute("role", "status");
     const progress = doc.createElement("input"); progress.type = "range"; progress.step = "0.1"; progress.setAttribute("aria-label", "Video konumu");
@@ -347,7 +478,7 @@
     }, { signal: state.abort.signal });
     progress.addEventListener("blur", () => { state.scrubbing = false; }, { signal: state.abort.signal });
     const transport = doc.createElement("div"); transport.className = "transport";
-    const skip = direction => { videoAction(state, direction)?.(); updateControls(state); };
+    const skip = direction => skipVideo(state, direction);
     const previous = button("Önceki video", "previous", () => skip("previous"), icon(doc, "M6 5v14m12-14-10 7 10 7Z"));
     const backwardIcon = seekIcon(doc, false);
     const backward = button("Geri sar", "seek backward", () => seek(state, -state.seconds), backwardIcon.svg);
@@ -362,10 +493,10 @@
     transport.append(previous, backward, play, forward, next);
     bottom.append(feedback, progress, time);
     overlay.append(top, transport, bottom);
-    root.append(slot, overlay); doc.body.append(root);
+    root.append(slot, overlay, settings); doc.body.append(root);
     // The page can inspect this DOM. Publish only a one-way window marker.
     void markButton(play, state.session);
-    state.controls = { title, progress, time, previous, backward, play, forward, next, skipAd,
+    state.controls = { title, progress, time, previous, backward, play, forward, next, skipAd, close, speed, volume, muted, loop, autoNext,
       backwardNumber: backwardIcon.number, forwardNumber: forwardIcon.number };
     state.feedback = feedback;
     state.marker = document.createComment("Morf PiP video position");
@@ -376,7 +507,7 @@
       state.playerObserver.observe(state.transfer, { attributes: true, attributeFilter: ["class"], childList: true });
       doc.querySelector(".transport").addEventListener("pointerenter", () => updateControls(state), { signal: state.abort.signal });
       for (const event of ["yt-navigate-finish", "yt-page-data-updated"])
-        document.addEventListener(event, () => updateControls(state), { signal: state.abort.signal });
+        document.addEventListener(event, () => reconcileVideo(state), { signal: state.abort.signal });
     }
     updateControls(state);
     state.pip.addEventListener("pagehide", () => dispose(state), { once: true, signal: state.abort.signal });
@@ -435,12 +566,13 @@
     const youtube = location.hostname === "youtube.com" || location.hostname.endsWith(".youtube.com");
     const transfer = youtube ? video.closest("#movie_player") || video : video;
     const state = { session: config.session, video, transfer, youtube, advanced: config.advanced === true, prepared: config.prepare === true, seconds: policy.seekSeconds(config.seekSeconds), abort: new AbortController(),
-      parent: transfer.parentNode, originalStyle: video.getAttribute("style"), disposed: false };
+      parent: transfer.parentNode, originalStyle: video.getAttribute("style"), pauseOnClose: true, autoNext: false, disposed: false };
     active = state;
-    state.messageListener = message => {
+    state.messageListener = (message, sender, respond) => {
       if (message?.channel !== "morf-pip" || message.session !== state.session || state.disposed) return;
       if (message.type === "dispose") dispose(state, true, false);
       else if (message.type === "publish") publish(state);
+      else if (message.type === "probe") respond?.({ session: state.session });
       else if (message.type === "config") { state.seconds = policy.seekSeconds(message.seekSeconds); state.advanced = message.advanced === true; updateControls(state); }
       else if (message.type === "open") {
         void openPip(state).catch(error => {
@@ -450,20 +582,10 @@
       }
     };
     api.runtime.onMessage.addListener(state.messageListener);
-    for (const event of ["play", "pause", "loadedmetadata", "durationchange", "emptied", "ended", "seeked"])
-      video.addEventListener(event, () => { updateControls(state); publish(state); }, { signal: state.abort.signal });
-    video.addEventListener("timeupdate", () => updateProgress(state), { signal: state.abort.signal });
+    bindVideo(state, video);
     window.addEventListener("pagehide", () => dispose(state), { once: true, signal: state.abort.signal });
-    // Observe only the selected player's original container, only during the explicit session.
-    // If a site replaces the video, stop safely rather than controlling a stale element.
-    state.observer = new MutationObserver(() => {
-      if (state.disposed) return;
-      if (!state.video.isConnected && (!state.pip || state.pip.closed)) dispose(state);
-      else updateControls(state);
-    });
-    state.observer.observe(state.parent, { childList: true, subtree: false });
-    if (state.prepared && state.transfer !== video)
-      state.observer.observe(video.parentNode, { childList: true });
+    // Event-driven replacement detection only for this selected player's containers.
+    observePlayer(state);
     try {
       if (state.prepared) {
         if (inlineButton) await markButton(inlineButton, state.session, "-inline");

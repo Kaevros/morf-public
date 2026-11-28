@@ -224,7 +224,7 @@ namespace Widgates
                 if (settings.PictureInPicture)
                 {
                     Border seekCard = null;
-                    Choice("Video penceresi", "Standart görünümde gri başlık yoktur. Gelişmiş görünüm sarma ve zaman çubuğu ekler; tarayıcı başlığı görünür.",
+                    Choice("Video penceresi", "Video geçişlerinde açık kalma, sonraki video, hız ve ses ayarları için Gelişmiş görünümü seçin. Bu görünümde tarayıcı başlığı görünür. Değişiklik sonraki açılışta uygulanır.",
                         new[] { "Standart · Başlıksız", "Gelişmiş · Morf denetimleri" }, settings.PictureInPictureAdvanced ? 1 : 0,
                         value => { settings.PictureInPictureAdvanced = value == 1; if (seekCard != null) seekCard.Visibility = value == 1 ? Visibility.Visible : Visibility.Collapsed; apply(true); });
                     Choice("PiP sarma süresi", "İleri ve geri sarma düğmeleri",

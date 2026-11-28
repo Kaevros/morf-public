@@ -70,6 +70,10 @@ seçeneğini açın ve tarayıcı eklentisinin kurulum adımlarını izleyin.
 Eklenti yerel geliştirme önizlemesidir; mağaza kurulumu veya tüm tarayıcılarda
 uyumluluk iddiası değildir. Standart görünüm başlıksız tarayıcı video penceresi,
 gelişmiş görünüm ise Morf denetimleri ve tarayıcı başlığı kullanır.
+Video geçişlerinde açık kalma, sonraki video ve ek ayarlar için Gelişmiş
+görünümü seçin. PiP ayarları hız, ses, tekrar ve bitince sonraki videoyu sunar.
+Güncellemeden sonra tarayıcının uzantılar sayfasındaki Morf eklentisini
+yenileyin, ardından açık video sekmelerini bir kez yenileyin.
 Morf standart kullanıcı olarak çalışır. Çoklu ses çıkışı deneyseldir.
 Windows 10 1809+ API tabanı ve .NET Framework 4.8 gerekir; tüm cihazlarda
 uyumluluk ve başka bilgisayarda kurulum henüz doğrulanmadı.

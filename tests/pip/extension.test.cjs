@@ -122,10 +122,22 @@ test("Tab removal releases native host and pending deadline", () => {
   const h = harness(); h.api.action.onClicked.fire({ id: 7, url: "https://www.youtube.com/watch?v=test" });
   h.api.tabs.onRemoved.fire(7); assert.ok(h.calls.includes("disconnect")); assert.equal(h.timers.size, 0);
 });
-test("Same-origin SPA video changes retain the connection; document navigation releases it", () => {
+test("Loading notifications and same-origin SPA changes retain PiP; cross-origin navigation releases it", () => {
   const h = harness(); h.api.action.onClicked.fire({ id: 7, url: "https://www.youtube.com/watch?v=test" });
   h.api.tabs.onUpdated.fire(7, { url: "https://www.youtube.com/watch?v=next" });
   assert.ok(!h.calls.includes("disconnect"));
   h.api.tabs.onUpdated.fire(7, { status: "loading" });
+  assert.ok(!h.calls.includes("disconnect"));
+  h.api.tabs.onUpdated.fire(7, { url: "https://example.org/video" });
   assert.ok(h.calls.includes("disconnect"));
+});
+test("Completed navigation checks the selected document without polling and releases a lost document", async () => {
+  const h = harness(); h.api.action.onClicked.fire({ id: 7, url: "https://www.youtube.com/watch?v=test" });
+  h.port.onMessage.fire({ version: 1, type: "config", enabled: true, seekSeconds: 10 }); await drain();
+  h.api.tabs.sendMessage = async (id, message) => ({ session: message.session });
+  h.api.tabs.onUpdated.fire(7, { status: "complete" }); await drain();
+  assert.ok(!h.calls.includes("disconnect")); assert.equal(h.timers.size, 0);
+  h.api.tabs.sendMessage = async () => undefined;
+  h.api.tabs.onUpdated.fire(7, { status: "complete" }); await drain();
+  assert.ok(h.calls.includes("disconnect")); assert.equal(h.timers.size, 0);
 });

@@ -8,7 +8,11 @@ YouTube's watch-page metadata guard runs in the page's MAIN world before site me
 
 The capsule can invoke the linked player's accessible inline button after an explicit artwork click. The lookup requires matching media metadata, the launching browser process and a per-session accessibility ID. If invocation fails, the extension can offer the source-tab button.
 
-Advanced YouTube PiP moves its bounded `#movie_player` subtree to retain the controller/video relationship. Moving only its video paused live playback during verification. Other sites move the original video, with a placeholder and inline-style restoration. Standard PiP leaves the source DOM intact. A removed/replaced source ends the session safely. Site adapters are packaged code, never remote selectors. Standard PiP's leave event does not identify the browser's close-versus-return action; Morf pauses on either exit. Advanced PiP's explicit return action preserves playback.
+Advanced YouTube PiP moves its bounded `#movie_player` subtree to retain the controller/video relationship. Moving only its video paused live playback during verification. Other sites move the original video, with a placeholder and inline-style restoration. Standard PiP leaves the source DOM intact. Advanced PiP stays open on pause/end and rebinds replacement videos/players within the selected containers, aborting old video listeners and retiring old playback. It waits with disabled media controls if no replacement exists yet. Site adapters are packaged code, never remote selectors. Standard PiP's leave event does not identify the browser's close-versus-return action; Morf pauses on either exit. Advanced PiP's explicit return action preserves playback.
+
+The advanced player's settings menu controls speed, volume, mute, repeat, opt-in automatic next on end, and pause-on-close (default on). These choices last for the current PiP session; no browser storage permission or preference write was added. Replacement videos expose their own playback values. Repeat and automatic next are mutually exclusive. Automatic next uses only an available packaged site action, after the site's synchronous end handler has had a chance to change the source. Full source-document navigation/closure, explicit return/close, feature disable and host disconnection still end the session. Document PiP cannot outlive its opener: [Chrome documentation](https://developer.chrome.com/docs/web-platform/document-picture-in-picture). Standard video PiP remains browser-managed and cannot guarantee continuity across video-element replacement.
+
+Loading notifications no longer dispose the selected connection. The source's `pagehide` closes it on actual navigation; on load completion a single document-scoped acknowledgement also releases a connection whose unloading message was lost. This is event-driven, without a heartbeat or navigation polling.
 
 ## Boundaries
 
@@ -23,6 +27,22 @@ Disabling disposes the pipe. Browser cleanup removes listeners/observers/tempora
 On explicit host startup, one public Toolhelp snapshot identifies the launching browser by exact executable name. This distinguishes Chromium variants such as Brave even when their user agents say Chrome, without a recurring process watcher. Denied/unknown caller lookup retains the conservative extension hint; artwork remains subject to exact source/metadata matching.
 
 This is not a zero-vulnerability claim or independent security audit. Same-user native malware remains outside this boundary. Store signing/identities and updates require owner-controlled release work.
+
+## Continuity and controls verification — 2026-11-28
+
+Windows build **26300.9974** (26H2), .NET SDK **10.0.403**, isolated Chromium **151.0.7922.34**. No installed app, registry registration, owner browser profile or saved preference was changed; no package was published.
+
+| Check | Actual result |
+| --- | --- |
+| .NET 10 product build | Passed, zero warnings/errors; `artifacts/pip-continuity-net10-build.log`. |
+| Inbox product build | Passed via `Check-InboxPreview.ps1`; executable in `artifacts/pip-continuity-inbox`. |
+| .NET 10 standard suite | **430 passed**, programmatic WPF checks, no real media application; `artifacts/pip-continuity-checks-net10.log`. |
+| Inbox standard suite | **431 passed**, separately run; `artifacts/pip-continuity-inbox.log`. |
+| Offline browser extension suite | **17 passed**, `node --test tests/pip/*.test.cjs`; `artifacts/pip-continuity-extension.log`. |
+| Headless browser scenarios | **40 passed**, generated VP8 video and a YouTube-shaped local fixture, Native Messaging simulated; `artifacts/pip-continuity-browser.log`. Covers pause/end continuity, missing-video wait, replacement before opening, video-element and whole-player replacement, current-controller next/previous, real end-event auto-next, menu speed/volume/mute/repeat/close options, small-window scrolling and resource cleanup. |
+| Visible-browser scenario | Fixture setup failed with `DEMUXER_ERROR_COULD_NOT_OPEN`, before product PiP testing; `artifacts/pip-continuity-browser-headed.log`. Visible-browser playback and these new controls on live YouTube/Netflix are **unverified** for this change. |
+
+The loading-notification regression failed before the worker fix. The new video-replacement browser scenario also failed against an untouched `HEAD` copy of the old content script because the controls still targeted the retired element (`artifacts/pip-continuity-baseline.log`), then passed with the fix. Settings screenshot inspected at `artifacts/pip-browser-checks/pip-settings.png`; these headless fixture checks do not establish live-site, installed-native-transport, DRM or physical-device compatibility.
 
 ## Verification — 2026-11-22
 
