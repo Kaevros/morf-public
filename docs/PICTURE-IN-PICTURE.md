@@ -32,6 +32,12 @@ This is not a zero-vulnerability claim or independent security audit. Same-user 
 
 ## Continuity and controls verification — 2026-11-28
 
+### Header-free selection and installed revision 21
+
+On the same Windows build, signed **0.3.3.21** was installed after normal app exit. The installed EXE matched the signed payload and the running app used that package. `PictureInPictureAdvanced=False` selected standard video PiP; saved settings matched the intended change after launch, theme stayed unchanged and the native Windows startup preference stayed enabled. Desktop setup ZIP/MSIX hashes matched the revision-21 artifacts. SDK and Inbox standard suites each passed **442 checks**; offline extension checks passed **17**.
+
+Installed Brave **158.0.8127.92**, the unchanged MV3 extension, real registered native executable and running revision-21 Morf passed **9 checks** on live YouTube (`aqz-KE-bpKQ`) in a disposable browser profile. The host's standard-PiP preference reached the extension; a trusted click opened native video PiP, playback advanced, no Document PiP window was created, and close paused playback/released the native connection. Native Messaging was not simulated and the host manifest was not replaced. Evidence: `artifacts/pip-update-0.3.3.21/installed-verification.json` and `brave-native-header-free.log`. This verifies standard-mode routing and live playback, not removal of the browser's thin native border or wider device compatibility.
+
 Windows build **26300.9974** (26H2), .NET SDK **10.0.403**, isolated Chromium **151.0.7922.34**. No installed app, registry registration, owner browser profile or saved preference was changed; no package was published.
 
 | Check | Actual result |
