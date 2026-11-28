@@ -252,7 +252,17 @@ namespace Widgates
             else if (index == 3)
             {
                 var startup = Toggle("Windows ile başlat", "Yalnızca bu seçeneği açtığınızda Windows başlangıcına eklenir.", settings.StartWithWindows, null);
-                startup.Click += (_, __) => { if (configureStartup(startup.IsChecked == true)) apply(true); else startup.IsChecked = settings.StartWithWindows; };
+                startup.Click += async (_, __) =>
+                {
+                    startup.IsEnabled = false;
+                    try
+                    {
+                        bool enabled = startup.IsChecked == true;
+                        bool applied = actions.ConfigureStartupAsync != null ? await actions.ConfigureStartupAsync(enabled) : configureStartup != null && configureStartup(enabled);
+                        if (applied) apply(true); else startup.IsChecked = settings.StartWithWindows;
+                    }
+                    finally { startup.IsEnabled = true; }
+                };
                 Toggle("Bildirim alanı simgesi", "Aç, ayarlar, 15 dakika gizle ve çıkış seçeneklerine erişim sağlar.", settings.ShowTrayIcon, value => settings.ShowTrayIcon = value);
                 Toggle("Oyunlarda gizle", "Algılanan oyunlarda kısayolla da ekran önüne gelmez.", settings.HideInGames, value => settings.HideInGames = value);
                 Toggle("Tüm masaüstlerinde göster", "Masaüstü değiştiğinde kapsül sizi izler.", settings.FollowDesktops, value => settings.FollowDesktops = value);
@@ -478,11 +488,19 @@ namespace Widgates
             var row = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
             var cancel = Button("Vazgeç", CancelReset); cancel.IsDefault = true;
             row.Children.Add(cancel);
-            row.Children.Add(Button("Evet, varsayılanlara dön", () =>
+            Button reset = null;
+            reset = Button("Evet, varsayılanlara dön", async () =>
             {
-                if (actions.Reset != null && actions.Reset()) { CancelReset(); SelectPage(5); }
-                else if (actions.Reset == null) SetNotice("Sıfırlama bu görünümde kullanılamıyor.");
-            }));
+                reset.IsEnabled = false;
+                try
+                {
+                    bool applied = actions.ResetAsync != null ? await actions.ResetAsync() : actions.Reset != null && actions.Reset();
+                    if (applied) { CancelReset(); SelectPage(5); }
+                    else if (actions.Reset == null && actions.ResetAsync == null) SetNotice("Sıfırlama bu görünümde kullanılamıyor.");
+                }
+                finally { reset.IsEnabled = true; }
+            });
+            row.Children.Add(reset);
             content.Children.Add(row);
             resetConfirmation = new Border { Child = content, Background = ThemePalette.Card, BorderBrush = ThemePalette.Accent, BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12), Padding = new Thickness(16), Margin = new Thickness(0, 0, 0, 12) };

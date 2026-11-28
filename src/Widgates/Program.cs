@@ -41,18 +41,22 @@ namespace Widgates
 
                 bool firstLaunch = !System.IO.File.Exists(WidgetSettings.DefaultPath);
                 var settings = WidgetSettings.Load(WidgetSettings.DefaultPath);
-                bool startupChanged;
-                bool startupReady = new StartupRegistration().Initialize(settings, out startupChanged);
-                if (startupReady && startupChanged) settings.Save(WidgetSettings.DefaultPath);
                 var application = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
                 var window = new IslandWindow(settings, StopwatchState.DefaultPath);
                 window.EnableShellServices();
-                if (firstLaunch) window.ContentRendered += (_, __) => window.OfferPictureInPictureSetup();
+                bool startupRead = false;
+                window.ContentRendered += async (_, __) =>
+                {
+                    if (startupRead) return; startupRead = true;
+                    bool previous = settings.StartWithWindows, configured = settings.StartupConfigured;
+                    if (!await new StartupRegistration().InitializeAsync(settings)) window.ShowStartupFailure();
+                    else if (previous != settings.StartWithWindows || configured != settings.StartupConfigured) settings.Save(WidgetSettings.DefaultPath);
+                    if (firstLaunch) window.OfferPictureInPictureSetup();
+                };
                 application.SessionEnding += (_, __) => window.AllowSessionExit();
                 SingleInstanceActivation activation = null;
                 try { activation = new SingleInstanceActivation(() => { if (!application.Dispatcher.HasShutdownStarted) application.Dispatcher.BeginInvoke(new Action(window.OpenFromShell)); }); }
                 catch (Exception) { }
-                if (!startupReady) window.ShowStartupFailure();
                 try { application.Run(window); } finally { if (activation != null) activation.Dispose(); }
             }
         }

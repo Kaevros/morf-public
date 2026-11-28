@@ -7,6 +7,7 @@ namespace Widgates
         internal Action<bool> Apply;
         internal Func<ThemePreference, bool> SelectTheme;
         internal Func<bool, bool> ConfigureStartup;
+        internal Func<bool, System.Threading.Tasks.Task<bool>> ConfigureStartupAsync;
         internal Action Exit;
         internal Func<System.Threading.Tasks.Task<string>> RefreshApplication;
         internal Func<int> ShelfCount;
@@ -19,7 +20,8 @@ namespace Widgates
         internal Action SetupPictureInPicture;
         internal Func<System.Threading.Tasks.Task> ResumePrevious;
         internal Func<string[], bool> ConfigureHotkeys;
-        internal Func<bool> Reset;
+        internal Func<bool> Reset = null;
+        internal Func<System.Threading.Tasks.Task<bool>> ResetAsync;
         internal Func<string> Diagnostics;
         internal Action<string> CopyDiagnostics;
         internal Action<int> StartSleep;

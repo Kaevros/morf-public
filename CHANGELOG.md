@@ -6,6 +6,8 @@
 - Preserve the selected connection during loading notifications and release it on actual document loss without polling.
 - Add advanced PiP speed, volume, mute, repeat, optional automatic next and pause-on-close controls. Source-supported next/previous actions remain available in the player.
 - Document extension refresh after an update and the remaining live-site/device verification limits in [the PiP report](docs/PICTURE-IN-PICTURE.md).
+- Use the native Windows startup task for MSIX installations, replacing the ineffective virtualized, version-specific Run value. Read startup state asynchronously, honor Windows user/policy blocks, and keep first launch opt-in. Portable builds retain their current-user startup value.
+- Record signed revision-20 installation and actual startup-task API checks in [startup validation](docs/STARTUP-VALIDATION.md); reboot/logon remains unverified.
 
 ## 0.3.3-preview maintenance — 2026-11-23
 

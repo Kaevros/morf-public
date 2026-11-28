@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
@@ -1755,20 +1756,27 @@ namespace Widgates
             list.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)] = style;
         }
 
-        private void OpenSettings()
+        private bool openingSettings;
+        private async void OpenSettings()
         {
-            if (closed) return;
+            if (closed || openingSettings) return;
             if (mixerWindow != null) mixerWindow.Close();
             messages.Cancel(false);
             peek.Cancel(false); UpdateCompactContent(); UpdateState(false);
             if (settingsWindow != null) { settingsWindow.Activate(); return; }
             collapse.Stop();
-            if (!new StartupRegistration().Initialize(settings))
-                ShowSettingsNotice("Windows başlangıç durumu okunamadı; mevcut tercih değiştirilmedi.");
+            openingSettings = true;
+            try
+            {
+                if (!await new StartupRegistration().InitializeAsync(settings))
+                    ShowSettingsNotice("Windows başlangıç durumu okunamadı; mevcut tercih değiştirilmedi.");
+            }
+            finally { openingSettings = false; }
+            if (closed) return;
             var window = new SettingsWindow(settings, new SettingsActions { Apply = ApplySettings, SelectTheme = SelectTheme,
-                ConfigureStartup = ConfigureStartup, Exit = () => { exitConfirmed = true; Close(); }, RefreshApplication = RefreshApplicationAsync, ShelfCount = () => shelf.Paths.Count,
+                ConfigureStartupAsync = ConfigureStartupAsync, Exit = () => { exitConfirmed = true; Close(); }, RefreshApplication = RefreshApplicationAsync, ShelfCount = () => shelf.Paths.Count,
                 MotionAllowed = () => !LightMode && (power == null || power.State.RenderAllowed),
-                HideTemporarily = HideTemporarily, ConfigureHotkeys = ConfigureHotkeys, Reset = ResetDefaults,
+                HideTemporarily = HideTemporarily, ConfigureHotkeys = ConfigureHotkeys, ResetAsync = ResetDefaultsAsync,
                 Diagnostics = Diagnostics, CopyDiagnostics = CopyDiagnostics, StartSleep = minutes => sleep.Start(minutes), CancelSleep = () => sleep.Cancel(),
                 SleepMinutes = () => sleep.SelectedMinutes, SleepActive = () => sleep.Active,
                 MediaStatus = () => string.IsNullOrWhiteSpace(media.Notice) ? media.ReturnStatus : media.Notice + "\n" + media.ReturnStatus, ResumePrevious = media.ResumePreviousAsync,
@@ -1810,9 +1818,11 @@ namespace Widgates
             return saved;
         }
 
-        private bool ConfigureStartup(bool enabled)
+        private async Task<bool> ConfigureStartupAsync(bool enabled)
         {
-            if (!new StartupRegistration().Configure(enabled)) { ShowStartupFailure(); return false; }
+            var registration = new StartupRegistration();
+            if (!await registration.ConfigureAsync(enabled))
+            { if (registration.Notice != null) ShowSettingsNotice(registration.Notice); else ShowStartupFailure(); return false; }
             settings.StartWithWindows = enabled;
             settings.StartupConfigured = true;
             return true;
@@ -1827,11 +1837,11 @@ namespace Widgates
             shortcutWarning = ""; SaveSettings(); return true;
         }
 
-        private bool ResetDefaults()
+        private async Task<bool> ResetDefaultsAsync()
         {
             var previous = settings.Clone(); var defaults = new WidgetSettings { StartupConfigured = true };
             if (placement != null && !placement.ConfigureHotkeys(defaults.Hotkeys)) { ShowSettingsNotice("Varsayılan kısayol kullanılamıyor; ayarlar korunuyor. " + placement.HotkeyFailure); return false; }
-            if (!new StartupRegistration().Configure(defaults.StartWithWindows))
+            if (!await new StartupRegistration().ConfigureAsync(defaults.StartWithWindows))
             {
                 if (placement != null) placement.ConfigureHotkeys(previous.Hotkeys);
                 ShowStartupFailure(); return false;
@@ -1872,7 +1882,8 @@ namespace Widgates
             text.AppendLine("Hafif mod: " + settings.Lightweight + " · Etkin: " + LightMode);
             if (power != null) text.AppendLine("Pil: " + power.State.OnBattery + " · Tasarruf: " + power.State.Saving + " · Kilit: " + power.State.Locked + " · Ekran açık: " + power.State.DisplayOn + " · Bildirimler: " + power.NotificationsAvailable);
             text.AppendLine("Uyku zamanlayıcısı: " + (sleep.Due.HasValue ? sleep.Due.Value.ToLocalTime().ToString("HH:mm") : "Kapalı"));
-            try
+            if (AppNotificationListener.HasIdentity) text.AppendLine("Windows başlangıcı · Windows başlangıç görevi · Tercih: " + settings.StartWithWindows);
+            else try
             {
                 using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
                     text.AppendLine("Windows başlangıcı · Tercih: " + settings.StartWithWindows + " · Kayıt var: " + (key != null && key.GetValue("WindowsWidgates.Morf") is string));

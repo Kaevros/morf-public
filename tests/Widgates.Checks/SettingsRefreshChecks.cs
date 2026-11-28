@@ -53,6 +53,29 @@ namespace Widgates
                 Check(parsed.Entries.Length == 1 && parsed.Hidden("example") == false, "Removing one application preserves the remaining behavior");
             }
             finally { window.Close(); }
+            var startupResult = new TaskCompletionSource<bool>(); int startupCalls = 0, startupSaves = 0;
+            var startupModel = new WidgetSettings();
+            var startupWindow = new SettingsWindow(startupModel, new SettingsActions {
+                Apply = _ => startupSaves++, SelectTheme = _ => true,
+                ConfigureStartupAsync = async value => { startupCalls++; bool applied = await startupResult.Task; if (applied) startupModel.StartWithWindows = value; return applied; }
+            });
+            try
+            {
+                startupWindow.SelectPage(3);
+                var startupControl = Children(Page(startupWindow)).OfType<CheckBox>().First();
+                startupControl.IsChecked = true; startupControl.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                Check(!startupControl.IsEnabled && startupCalls == 1 && startupSaves == 0,
+                    "Startup waits for the Windows result without blocking or prematurely saving the preference");
+                startupResult.SetResult(false); await Task.Delay(20);
+                Check(startupControl.IsEnabled && startupControl.IsChecked == false && startupSaves == 0,
+                    "A denied startup change restores the prior toggle and preserves saved settings");
+                startupResult = new TaskCompletionSource<bool>();
+                startupControl.IsChecked = true; startupControl.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                startupResult.SetResult(true); await Task.Delay(20);
+                Check(startupControl.IsEnabled && startupModel.StartWithWindows && startupSaves == 1,
+                    "A successful asynchronous startup change commits the confirmed preference once");
+            }
+            finally { startupWindow.Close(); }
             var empty = new IslandWindow(new WidgetSettings());
             try
             {

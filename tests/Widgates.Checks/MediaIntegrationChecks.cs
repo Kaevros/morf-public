@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
 
 namespace Widgates
 {
@@ -100,6 +101,30 @@ namespace Widgates
                 "Denied startup status access is recoverable without a registry write");
             Check(StartupRegistration.Command(@"\\server\app.exe") == null && StartupRegistration.Command("C:\\bad\"name.exe") == null,
                 "Startup command rejects UNC paths and injected quoting");
+            var taskStore = new FakeStartupTask();
+            var packagedStartup = new StartupRegistration(taskStore);
+            preferences = new WidgetSettings { StartWithWindows = true };
+            Check(await packagedStartup.InitializeAsync(preferences) && !preferences.StartWithWindows && taskStore.Enables == 0 && taskStore.Disables == 0,
+                "Packaged launch reads the actual Windows startup task without silently enabling it");
+            taskStore.State = StartupTaskState.Enabled;
+            Check(await packagedStartup.InitializeAsync(preferences) && preferences.StartWithWindows,
+                "Packaged startup recognizes the Windows task independently of a package-version path");
+            taskStore.State = StartupTaskState.DisabledByUser;
+            Check(!await packagedStartup.ConfigureAsync(true) && taskStore.Enables == 0 && packagedStartup.Notice != null,
+                "Startup disabled by the user is respected with actionable Windows settings feedback");
+            taskStore.State = StartupTaskState.DisabledByPolicy;
+            Check(!await packagedStartup.ConfigureAsync(true) && taskStore.Enables == 0,
+                "Packaged startup never bypasses a Windows policy block");
+            taskStore.State = StartupTaskState.Disabled;
+            Check(await packagedStartup.ConfigureAsync(true) && taskStore.State == StartupTaskState.Enabled && taskStore.Enables == 1,
+                "Explicit packaged enable activates the native Windows startup task");
+            Check(await packagedStartup.ConfigureAsync(true) && taskStore.Enables == 1,
+                "Repeated packaged enable does not request another state change");
+            Check(await packagedStartup.ConfigureAsync(false) && taskStore.State == StartupTaskState.Disabled && taskStore.Disables == 1,
+                "Disabling or resetting packaged startup disables the native task");
+            taskStore.DenyRead = true; preferences.StartWithWindows = true;
+            Check(!await packagedStartup.InitializeAsync(preferences) && preferences.StartWithWindows,
+                "Unavailable packaged startup state preserves the existing preference");
         }
 
         private static void Check(bool condition, string label) { if (!condition) throw new InvalidOperationException(label); Console.WriteLine("PASS " + label); }
@@ -121,6 +146,15 @@ namespace Widgates
             public string Read() { if (DenyRead) throw new UnauthorizedAccessException(); return Value; }
             public void Write(string command) { if (!IgnoreWrites) Value = command; Writes++; }
             public void Remove() { if (!IgnoreRemoves) Value = null; Removes++; }
+        }
+        private sealed class FakeStartupTask : IStartupTaskStore
+        {
+            internal StartupTaskState State = StartupTaskState.Disabled;
+            internal int Enables, Disables;
+            internal bool DenyRead;
+            public Task<StartupTaskState> ReadAsync() { if (DenyRead) throw new UnauthorizedAccessException(); return Task.FromResult(State); }
+            public Task<StartupTaskState> EnableAsync() { Enables++; State = StartupTaskState.Enabled; return Task.FromResult(State); }
+            public Task<StartupTaskState> DisableAsync() { Disables++; State = StartupTaskState.Disabled; return Task.FromResult(State); }
         }
     }
 }

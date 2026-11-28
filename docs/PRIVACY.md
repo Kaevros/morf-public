@@ -51,6 +51,6 @@ HKCU\Software\Morf\NotificationRouting
 
 ## Startup and permissions
 
-Windows startup is off by default. An explicit settings action manages Morf's own current-user startup value. Launching the application does not silently recreate or move the startup registration.
+Windows startup is off by default. An explicit settings action manages the MSIX package's native Windows startup task, or Morf's own current-user Run value for portable builds. The packaged task is independent of the versioned installation directory and appears in Windows Startup settings. Startup reads and changes are asynchronous and bounded; a task disabled by the user or policy is not overridden. Launching or upgrading the application only reads the Windows state and does not silently enable startup. Reset explicitly disables the corresponding startup mechanism.
 
 The build and package scripts do not request administrator access for normal application use, change antivirus settings or change certificate trust. A release must complete the signing and antivirus work recorded in [release readiness](RELEASING.md).
