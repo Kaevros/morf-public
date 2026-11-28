@@ -15,8 +15,8 @@ Yerel geliştirme önizlemesi; tarayıcı mağazalarında yayımlanmadı. Seçti
 ## Kullanım
 
 - Köşeden boyutlandırın; görüntü oranı korunur, gerektiğinde siyah boşluk bırakılır. Çerçeve ve konum tarayıcıya aittir.
-- Varsayılan **Standart** görünüm gri alan adı şeridi olmayan video PiP penceresini kullanır. Düğmeler tarayıcıya aittir; Morf'un sarma ve zaman çubuğu bu görünümde yoktur.
-- **Gelişmiş · Morf denetimleri** görünümünde oynat/duraklat, sarma, zaman çizgisi, sekmeye dönüş ve kapatma bulunur. Bu modun tarayıcı başlığı gizlenemez. Görünüm seçimi bir sonraki açılışta uygulanır.
+- Varsayılan **Başlıksız · Standart video** görünümü gri `youtube.com` / alan adı şeridi olmayan video PiP penceresini kullanır. Düğmeler ve ince pencere kenarı tarayıcıya aittir; Morf'un özel ayarlar menüsü, sarma ve zaman çubuğu bu görünümde yoktur.
+- **Tarayıcı başlıklı · Morf denetimleri** (gelişmiş) görünümünde oynat/duraklat, sarma, zaman çizgisi, sekmeye dönüş ve kapatma bulunur. Bu modun tarayıcı kaynak başlığı gizlenemez. Görünüm seçimi bir sonraki PiP açılışında uygulanır; açık pencereyi kapatıp yeniden açın.
 - Gelişmiş görünümde **YouTube dahil varsayılan 10 saniye.** Morf ayarlarından 5 veya 15 seçilebilir; sürekli sorgulama gerektirmez.
 - Gelişmiş PiP duraklatılınca, video bitince veya aynı sayfadaki oynatıcı değişince açık kalır; yeni video aynı pencereye bağlanır. Video henüz yoksa bekler. Kaynak sekmeyi kapatma, sayfayı tamamen yenileme, başka siteye gitme veya Morf bağlantısını kapatma pencereyi kapatır. Standart PiP'nin video değişimindeki ömrünü tarayıcı yönetir; geçişlerde açık tutmak için **Gelişmiş** görünümü seçin.
 - PiP içindeki **ayarlar** düğmesinden oynatma hızı, ses düzeyi, sessiz, tekrar, **Bitince sonraki video** ve **Kapatınca duraklat** seçilir. Bu seçenekler mevcut PiP oturumu içindir; diske kaydedilmez. Yeni videonun hız/ses/tekrar değerleri kaynak oynatıcıdan okunur.

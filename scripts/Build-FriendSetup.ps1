@@ -68,8 +68,9 @@ WhatsApp bildirimi uygulamayı açar; sohbeti WhatsApp içinden seçebilirsiniz.
 Küçük video penceresi için Ayarlar > Medya ve ses > Pencere içinde video · PiP
 seçeneğini açın ve tarayıcı eklentisinin kurulum adımlarını izleyin.
 Eklenti yerel geliştirme önizlemesidir; mağaza kurulumu veya tüm tarayıcılarda
-uyumluluk iddiası değildir. Standart görünüm başlıksız tarayıcı video penceresi,
-gelişmiş görünüm ise Morf denetimleri ve tarayıcı başlığı kullanır.
+uyumluluk iddiası değildir. Gri site şeridini istemiyorsanız Başlıksız > Standart
+video görünümünü seçin. Düğmeler ve ince pencere kenarı tarayıcıya aittir.
+Tarayıcı başlıklı > Morf denetimleri seçeneği ek ayarlar ve zorunlu başlık kullanır.
 Video geçişlerinde açık kalma, sonraki video ve ek ayarlar için Gelişmiş
 görünümü seçin. PiP ayarları hız, ses, tekrar ve bitince sonraki videoyu sunar.
 Güncellemeden sonra tarayıcının uzantılar sayfasındaki Morf eklentisini

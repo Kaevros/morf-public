@@ -2,6 +2,7 @@
 
 ## 0.3.3-preview maintenance — 2026-11-28
 
+- Make PiP mode labels explicit: header-free standard video versus browser-headed Morf controls. Document the native border, control and video-transition limits instead of implying the advanced browser header can be removed.
 - Keep advanced PiP open on pause/end and while waiting for a replacement video; rebind changed videos and source players inside the existing window.
 - Preserve the selected connection during loading notifications and release it on actual document loss without polling.
 - Add advanced PiP speed, volume, mute, repeat, optional automatic next and pause-on-close controls. Source-supported next/previous actions remain available in the player.

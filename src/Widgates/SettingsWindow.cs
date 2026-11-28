@@ -224,8 +224,8 @@ namespace Widgates
                 if (settings.PictureInPicture)
                 {
                     Border seekCard = null;
-                    Choice("Video penceresi", "Video geçişlerinde açık kalma, sonraki video, hız ve ses ayarları için Gelişmiş görünümü seçin. Bu görünümde tarayıcı başlığı görünür. Değişiklik sonraki açılışta uygulanır.",
-                        new[] { "Standart · Başlıksız", "Gelişmiş · Morf denetimleri" }, settings.PictureInPictureAdvanced ? 1 : 0,
+                    Choice("Video penceresi", "Gri site başlığı olmadan izlemek için Başlıksız seçin; düğmeleri tarayıcı sağlar. Morf denetimleri ek ayarlar sunar ve zorunlu tarayıcı başlığı gösterir. Değişiklik sonraki PiP açılışında uygulanır.",
+                        new[] { "Başlıksız · Standart video", "Tarayıcı başlıklı · Morf denetimleri" }, settings.PictureInPictureAdvanced ? 1 : 0,
                         value => { settings.PictureInPictureAdvanced = value == 1; if (seekCard != null) seekCard.Visibility = value == 1 ? Visibility.Visible : Visibility.Collapsed; apply(true); });
                     Choice("PiP sarma süresi", "İleri ve geri sarma düğmeleri",
                         new[] { "10 saniye · Varsayılan", "5 saniye", "15 saniye" }, settings.PictureInPictureSeekSeconds == 5 ? 1 : settings.PictureInPictureSeekSeconds == 15 ? 2 : 0,
